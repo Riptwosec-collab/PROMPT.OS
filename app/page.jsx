@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import LanguageRuntime from '../components/LanguageRuntime.jsx';
 import { V5FeatureFlagProvider } from '../components/V5FeatureFlagProvider.jsx';
 import AppShell from '../components/shell/AppShell.jsx';
+import { V5_FEATURE_FLAGS } from '../lib/ui/feature-flags.mjs';
 import { normalizeV5Page, V5_NAV_ITEMS } from '../lib/ui/v5-navigation.mjs';
 
 const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
@@ -35,6 +36,15 @@ export default function HomePage() {
   const [activePage, setActivePage] = useState('library');
   const navigate = (page) => setActivePage(normalizeV5Page(page));
   const status = { mode: 'ready', revision: '—', pendingCount: 0, lastSyncedAt: null, version: 'V5 PREVIEW' };
+  const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
+
+  if (!v5ShellEnabled) {
+    return (
+      <LanguageRuntime>
+        <PromptOS />
+      </LanguageRuntime>
+    );
+  }
 
   return (
     <LanguageRuntime>
