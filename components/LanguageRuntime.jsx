@@ -6,7 +6,7 @@ import {
   LANGUAGE_STORAGE_KEY,
   normalizeLanguage,
 } from '../lib/i18n/runtime.mjs';
-import { translateComplete } from '../lib/i18n/complete.mjs';
+import { translateCatalogThai } from '../lib/i18n/catalog-th.mjs';
 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'PRE', 'CODE', 'TEXTAREA']);
 const TRANSLATABLE_ATTRIBUTES = ['placeholder', 'title', 'aria-label'];
@@ -48,7 +48,7 @@ export default function LanguageRuntime({ children }) {
       const source = remembered && current === remembered.rendered ? remembered.source : current;
       const { before, core, after } = splitWhitespace(source);
       if (!core) return;
-      const rendered = `${before}${translateComplete(language, core)}${after}`;
+      const rendered = `${before}${translateCatalogThai(language, core)}${after}`;
       textMemory.set(node, { source, rendered });
       if (current !== rendered) node.nodeValue = rendered;
     };
@@ -66,7 +66,7 @@ export default function LanguageRuntime({ children }) {
         const current = element.getAttribute(attribute) || '';
         const remembered = memory[attribute];
         const source = remembered && current === remembered.rendered ? remembered.source : current;
-        const rendered = translateComplete(language, source);
+        const rendered = translateCatalogThai(language, source);
         memory[attribute] = { source, rendered };
         if (current !== rendered) element.setAttribute(attribute, rendered);
       }
@@ -99,8 +99,8 @@ export default function LanguageRuntime({ children }) {
 
     const nativeConfirm = window.confirm.bind(window);
     const nativeAlert = window.alert.bind(window);
-    window.confirm = (message) => nativeConfirm(translateComplete(languageRef.current, message));
-    window.alert = (message) => nativeAlert(translateComplete(languageRef.current, message));
+    window.confirm = (message) => nativeConfirm(translateCatalogThai(languageRef.current, message));
+    window.alert = (message) => nativeAlert(translateCatalogThai(languageRef.current, message));
 
     return () => {
       observer.disconnect();
