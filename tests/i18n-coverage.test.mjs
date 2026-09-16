@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { translate } from '../lib/i18n/runtime.mjs';
+
+const REQUIRED_UI_TEXT = [
+  'Favorite', 'Pin', 'COPIED_SUCCESS', 'EXECUTE_COPY', 'IMG', 'TXT',
+  'SYSTEM_OVERVIEW', 'Prompt Operations Dashboard', 'TOP_PROMPTS', 'RECENTLY_UPDATED',
+  'CATEGORY_DISTRIBUTION', 'RESULT_STATUS', 'RECOVERY_ZONE', 'TRASH_IS_EMPTY',
+  'PROMPT_SOURCE', 'COPY_RENDERED', 'COPIED_RENDERED', 'RENDERED_PREVIEW',
+  'ROLE', 'CONTEXT', 'TASK', 'REQUIREMENTS', 'CONSTRAINTS', 'OUTPUT FORMAT',
+  'COMPILE_TO_PROMPT + NEW_VERSION', 'VERSION_HISTORY', 'VERSION_DIFF', 'RESTORE',
+  'BASE', 'COMPARE', 'No note', 'VERSION_PERFORMANCE', 'NO_RUNS',
+  'RUN_HISTORY', 'HISTORY', 'META', 'COPY', 'RETRY', 'MARK_BEST',
+  'AWAITING_EXECUTION', 'EXECUTE_RUN', 'COMPARE:', 'OFF', 'RUN_METADATA',
+  'STATUS', 'RATING', 'PROVIDER', 'MODEL', 'PROMPT_VER', 'LATENCY', 'TOKENS', 'COST', 'TIMESTAMP', 'NOTES_LOG',
+  'EDIT_PROTOCOL_ENTRY', 'NEW_PROTOCOL_ENTRY', 'TITLE', 'CATEGORY', 'DESCRIPTION',
+  'DATA_PAYLOAD (PROMPT)', 'TAGS (COMMA SEPARATED)', 'COLLECTIONS (COMMA SEPARATED)',
+  'PREVIEW TYPE', 'TEXT / CODE', 'IMAGE RENDER', 'EXAMPLE_CODE_OUTPUT', 'IMAGE_URL_SOURCE',
+  'UPDATE_PROTOCOL + VERSION', 'SAVE_PROTOCOL', 'NO_DATA',
+  'EXCELLENT', 'GOOD', 'AVERAGE', 'NEEDS IMPROVEMENT', 'FAILED', 'READY',
+  'General', 'Coding', 'Image', 'Work', 'Image Generation',
+  'Initial imported version', 'Edited from prompt modal', 'Initial version', 'Compiled from Prompt Builder',
+  'Manual', 'Manual Result',
+];
+
+test('all known user-facing Prompt.OS labels have a Thai rendering', () => {
+  const missing = REQUIRED_UI_TEXT.filter((text) => translate('th', text) === text);
+  assert.deepEqual(missing, [], `Missing Thai translations: ${missing.join(', ')}`);
+});
+
+test('dynamic destructive actions and counters render in Thai', () => {
+  assert.equal(translate('th', 'Move DEMO_PROMPT to Trash?'), 'ย้าย DEMO_PROMPT ไปถังขยะหรือไม่?');
+  assert.equal(translate('th', 'Delete DEMO_PROMPT forever? This cannot be undone.'), 'ลบ DEMO_PROMPT ถาวรหรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้');
+  assert.equal(translate('th', 'RES 7'), 'ผลลัพธ์ 7');
+  assert.equal(translate('th', '3 runs · 2 excellent'), '3 รัน · ยอดเยี่ยม 2 ครั้ง');
+});
+
+test('the HTML document defaults to Thai before client hydration', () => {
+  const layout = fs.readFileSync(new URL('../app/layout.jsx', import.meta.url), 'utf8');
+  assert.match(layout, /<html lang="th">/);
+  assert.match(layout, /พื้นที่พัฒนาพรอมต์/);
+});
