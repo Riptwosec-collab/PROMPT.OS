@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { AI_PROMPT_LIBRARY } from '../lib/prompts/ai-prompt-library.mjs';
+import { translateCatalogThai } from '../lib/i18n/catalog-th.mjs';
 
 test('all built-in prompts expose explicit Thai metadata and bilingual usage instructions', () => {
   assert.equal(AI_PROMPT_LIBRARY.length, 30);
@@ -21,11 +22,15 @@ test('all built-in prompts expose explicit Thai metadata and bilingual usage ins
       assert.match(prompt.usageGuideTh, new RegExp(variableName, 'i'), `${prompt.name}.usageGuideTh should mention ${variableName}`);
       assert.match(prompt.usageGuideEn, new RegExp(variableName, 'i'), `${prompt.name}.usageGuideEn should mention ${variableName}`);
     }
+
+    assert.equal(prompt.exampleInput, prompt.usageGuideEn, `${prompt.name} should expose its usage guide in Prompt Detail`);
   }
 });
 
-test('prompt detail renders a dedicated usage guide section', () => {
+test('Prompt Detail relabels the existing example-input area as How to Use Prompt in both languages', () => {
   const source = fs.readFileSync(new URL('../components/PromptOS.jsx', import.meta.url), 'utf8');
-  assert.match(source, /USAGE_GUIDE/);
-  assert.match(source, /prompt\.usageGuide/);
+  assert.match(source, /EXAMPLE_INPUT/);
+  assert.match(source, /prompt\.exampleInput/);
+  assert.equal(translateCatalogThai('th', 'EXAMPLE_INPUT'), 'วิธีใช้พรอมต์');
+  assert.equal(translateCatalogThai('en', 'EXAMPLE_INPUT'), 'HOW TO USE PROMPT');
 });
