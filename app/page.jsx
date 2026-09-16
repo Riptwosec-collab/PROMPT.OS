@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import LanguageRuntime from '../components/LanguageRuntime.jsx';
 
 const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
   ssr: false,
@@ -12,5 +13,9 @@ const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
 });
 
 export default function HomePage() {
-  return <PromptOS />;
+  return (
+    <LanguageRuntime>
+      <PromptOS />
+    </LanguageRuntime>
+  );
 }
