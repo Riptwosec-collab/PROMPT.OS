@@ -3,10 +3,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CloudSyncPanel from './CloudSyncPanel.jsx';
 import { streamAiRun } from '../lib/ai/run-stream.mjs';
+import { AI_PROMPT_COLLECTIONS, AI_PROMPT_LIBRARY, PROMPT_CATALOG_VERSION, getVariableInputKind, mergePromptCatalog } from '../lib/prompts/ai-prompt-library.mjs';
+import { confirmDestructiveAction } from '../lib/ui/confirm-delete.mjs';
 
 const STORAGE_KEY = 'promptVaultData';
-const SCHEMA_VERSION = 3;
-const DEFAULT_COLLECTIONS = ['General', 'Coding', 'Image', 'Work'];
+const SCHEMA_VERSION = 4;
+const DEFAULT_COLLECTIONS = [...new Set(['General', 'Coding', 'Image', 'Work', ...AI_PROMPT_COLLECTIONS])];
 
 const DEFAULT_PROMPTS = [
   {
@@ -45,6 +47,7 @@ function nextVersion(current = '1.0') {
   const parts = String(current).split('.');
   const major = Number(parts[0]) || 1;
   const minor = Number(parts[1]) || 0;
+  if (parts.length >= 3) return `${major}.${minor + 1}.0`;
   return `${major}.${minor + 1}`;
 }
 
@@ -103,7 +106,18 @@ function upgradePrompt(prompt = {}, index = 0) {
 
   return {
     id: prompt.id ?? Date.now() + index,
-    title: prompt.title || 'UNTITLED_PROMPT',
+    name: prompt.name || prompt.title || 'UNTITLED_PROMPT',
+    displayTitle: prompt.displayTitle || prompt.title || prompt.name || 'UNTITLED_PROMPT',
+    subcategory: prompt.subcategory || '',
+    promptType: prompt.promptType || prompt.type || 'text',
+    language: prompt.language || 'Multi-language',
+    outputFormat: prompt.outputFormat || '',
+    compatibleModels: Array.isArray(prompt.compatibleModels) ? prompt.compatibleModels : [],
+    exampleInput: prompt.exampleInput || '',
+    exampleOutput: prompt.exampleOutput || '',
+    sourceType: prompt.sourceType || '',
+    variableConfig: prompt.variableConfig && typeof prompt.variableConfig === 'object' ? prompt.variableConfig : {},
+    title: prompt.title || prompt.displayTitle || prompt.name || 'UNTITLED_PROMPT',
     description: prompt.description || '',
     prompt: prompt.prompt || '',
     type: prompt.type || 'text',
@@ -129,27 +143,37 @@ function upgradePrompt(prompt = {}, index = 0) {
   };
 }
 
+function applyPromptCatalog(prompts = [], catalogVersion = null) {
+  const upgraded = prompts.map(upgradePrompt);
+  if (catalogVersion === PROMPT_CATALOG_VERSION) return upgraded;
+  return mergePromptCatalog(upgraded, AI_PROMPT_LIBRARY).map(upgradePrompt);
+}
+
 function normalizeDatabase(raw) {
   if (Array.isArray(raw)) {
     return {
       schemaVersion: SCHEMA_VERSION,
+      catalogVersion: PROMPT_CATALOG_VERSION,
       collections: DEFAULT_COLLECTIONS,
-      prompts: raw.map(upgradePrompt),
+      prompts: applyPromptCatalog(raw),
     };
   }
 
   if (raw && typeof raw === 'object' && Array.isArray(raw.prompts)) {
+    const prompts = applyPromptCatalog(raw.prompts, raw.catalogVersion);
     return {
       schemaVersion: SCHEMA_VERSION,
-      collections: Array.from(new Set([...(raw.collections || []), ...DEFAULT_COLLECTIONS])),
-      prompts: raw.prompts.map(upgradePrompt),
+      catalogVersion: PROMPT_CATALOG_VERSION,
+      collections: Array.from(new Set([...(raw.collections || []), ...DEFAULT_COLLECTIONS, ...prompts.flatMap((prompt) => prompt.collections || [])])),
+      prompts,
     };
   }
 
   return {
     schemaVersion: SCHEMA_VERSION,
+    catalogVersion: PROMPT_CATALOG_VERSION,
     collections: DEFAULT_COLLECTIONS,
-    prompts: DEFAULT_PROMPTS.map(upgradePrompt),
+    prompts: applyPromptCatalog(DEFAULT_PROMPTS),
   };
 }
 
@@ -168,6 +192,7 @@ function loadDatabase() {
 function serializeDatabase(prompts, collections) {
   return {
     schemaVersion: SCHEMA_VERSION,
+    catalogVersion: PROMPT_CATALOG_VERSION,
     exportedAt: nowIso(),
     appVersion: '3.0',
     collections,
@@ -332,9 +357,14 @@ export default function PromptOS() {
         .join(' ');
       const searchable = [
         prompt.title,
+        prompt.name,
+        prompt.displayTitle,
         prompt.description,
         prompt.prompt,
         prompt.category,
+        prompt.subcategory,
+        prompt.outputFormat,
+        ...(prompt.compatibleModels || []),
         ...(prompt.tags || []),
         resultText,
       ].join(' ').toLowerCase();
@@ -391,7 +421,7 @@ export default function PromptOS() {
 
   const softDelete = (prompt, event) => {
     event?.stopPropagation();
-    if (!window.confirm(`Move ${prompt.title} to Trash?`)) return;
+    if (!confirmDestructiveAction(window.confirm, `Move ${prompt.title} to Trash?`, `Confirm again: move ${prompt.title} to Trash?`)) return;
     patchPrompt(prompt.id, { deletedAt: nowIso() });
     if (selectedPromptId === prompt.id) setSelectedPromptId(null);
   };
@@ -400,7 +430,7 @@ export default function PromptOS() {
 
   const permanentlyDelete = (id) => {
     const prompt = prompts.find((item) => item.id === id);
-    if (!window.confirm(`Delete ${prompt?.title || 'this prompt'} forever? This cannot be undone.`)) return;
+    if (!confirmDestructiveAction(window.confirm, `Delete ${prompt?.title || 'this prompt'} forever? This cannot be undone.`, `FINAL CONFIRMATION: permanently delete ${prompt?.title || 'this prompt'}?`)) return;
     setPrompts((current) => current.filter((item) => item.id !== id));
   };
 
@@ -601,7 +631,7 @@ export default function PromptOS() {
 
         <div className="flex-1 overflow-hidden relative">
           {selectedPromptId && activePrompt ? (
-            <PromptDetail prompt={activePrompt} onUpdate={updatePrompt} />
+            <PromptDetail prompt={activePrompt} onUpdate={updatePrompt} onEdit={(item) => openEditModal(item)} />
           ) : currentView === 'dashboard' ? (
             <Dashboard analytics={analytics} />
           ) : currentView === 'trash' ? (
@@ -832,23 +862,39 @@ function TrashView({ prompts, onRestore, onPermanentDelete }) {
   );
 }
 
-function PromptDetail({ prompt, onUpdate }) {
+function PromptDetail({ prompt, onUpdate, onEdit }) {
   const [tab, setTab] = useState('prompt');
   const health = useMemo(() => promptHealth(prompt), [prompt]);
   const renderedPrompt = useMemo(() => renderPromptVariables(prompt.prompt, prompt.variables), [prompt.prompt, prompt.variables]);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
 
   const update = (updates) => onUpdate({ ...prompt, ...updates, updatedAt: nowIso() });
+  const copyPrompt = async () => {
+    await navigator.clipboard.writeText(renderedPrompt);
+    setCopiedPrompt(true);
+    update({ copyCount: (prompt.copyCount || 0) + 1 });
+    setTimeout(() => setCopiedPrompt(false), 1400);
+  };
 
   return (
     <div className="h-full flex flex-col bg-[#030508] overflow-hidden">
       <div className="shrink-0 border-b border-cyan-900/30 bg-[#04060A] px-4 md:px-6 py-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex gap-2 items-center flex-wrap"><Badge>{prompt.type.toUpperCase()}</Badge><Badge>v{prompt.version}</Badge>{prompt.pinned && <Badge>PINNED</Badge>}{prompt.favorite && <Badge>FAVORITE</Badge>}</div>
+            <div className="flex gap-2 items-center flex-wrap"><Badge>{prompt.type.toUpperCase()}</Badge><Badge>{prompt.category}</Badge><Badge>{prompt.status}</Badge><Badge>v{prompt.version}</Badge>{prompt.pinned && <Badge>PINNED</Badge>}{prompt.favorite && <Badge>FAVORITE</Badge>}</div>
             <h1 className="font-mono font-bold text-xl md:text-2xl text-white mt-2 truncate">{prompt.title}</h1>
             <p className="text-sm text-cyan-700 mt-1">{prompt.description}</p>
+            <div className="flex flex-wrap gap-1.5 mt-2">{prompt.tags?.map((tag) => <span key={tag} className="text-[9px] font-mono text-cyan-500 border border-cyan-900/50 px-2 py-0.5">{tag}</span>)}</div>
+            {!!prompt.compatibleModels?.length && <p className="text-[10px] font-mono text-cyan-800 mt-2">COMPATIBLE_MODELS: {prompt.compatibleModels.join(' / ')}</p>}
           </div>
-          <div className="flex flex-wrap gap-2 text-[10px] font-mono text-cyan-700"><span>RUNS {prompt.runs || 0}</span><span>COPIES {prompt.copyCount || 0}</span><span>RESULTS {prompt.results?.length || 0}</span><span>HEALTH {health.score}/{health.max}</span></div>
+          <div className="flex flex-col lg:items-end gap-3">
+            <div className="flex flex-wrap gap-2 text-[10px] font-mono text-cyan-700"><span>RUNS {prompt.runs || 0}</span><span>COPIES {prompt.copyCount || 0}</span><span>RESULTS {prompt.results?.length || 0}</span><span>HEALTH {health.score}/{health.max}</span></div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={copyPrompt} className="px-4 py-2 bg-cyan-500 text-black border border-cyan-300 text-[10px] font-mono font-bold tracking-widest hover:bg-cyan-300">{copiedPrompt ? 'COPIED' : 'COPY PROMPT'}</button>
+              <button onClick={() => onEdit?.(prompt)} className="px-4 py-2 border border-amber-700 text-amber-400 text-[10px] font-mono hover:border-amber-400">EDIT</button>
+              <button onClick={() => update({ favorite: !prompt.favorite })} className={`px-4 py-2 border text-[10px] font-mono ${prompt.favorite ? 'border-amber-400 text-amber-300 bg-amber-950/20' : 'border-cyan-900 text-cyan-600 hover:border-cyan-500'}`}>FAVORITE</button>
+            </div>
+          </div>
         </div>
         <div className="flex overflow-x-auto gap-1 mt-4 custom-scrollbar">
           {[
@@ -883,17 +929,41 @@ function PromptEditorTab({ prompt, renderedPrompt, health, onUpdate }) {
           <div className="flex justify-between items-center mt-3"><span className="text-[10px] font-mono text-cyan-700">{prompt.prompt.length} chars</span><button onClick={copyRendered} className="px-4 py-2 border border-cyan-800 text-cyan-400 text-[10px] font-mono hover:border-cyan-400">{copied ? 'COPIED_RENDERED' : 'COPY_RENDERED'}</button></div>
         </Panel>
         <div className="space-y-5">
+          <Panel title="PROMPT_METADATA">
+            <div className="space-y-2 text-[10px] font-mono">
+              <MetaRow label="CATEGORY" value={prompt.category || '-'} />
+              <MetaRow label="STATUS" value={prompt.status || '-'} />
+              <MetaRow label="LANGUAGE" value={prompt.language || '-'} />
+              <MetaRow label="OUTPUT_FORMAT" value={prompt.outputFormat || '-'} />
+              <MetaRow label="COMPATIBLE_MODELS" value={(prompt.compatibleModels || []).join(' / ') || '-'} />
+              <MetaRow label="SOURCE_TYPE" value={prompt.sourceType || '-'} />
+            </div>
+            {!!prompt.exampleInput && <div className="mt-3"><p className="text-[9px] text-cyan-700">EXAMPLE_INPUT</p><p className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{prompt.exampleInput}</p></div>}
+            {!!prompt.exampleOutput && <div className="mt-3"><p className="text-[9px] text-cyan-700">EXAMPLE_OUTPUT</p><p className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{prompt.exampleOutput}</p></div>}
+          </Panel>
           <Panel title={`PROMPT_HEALTH ${health.score}/${health.max}`}>
             <div className="space-y-2">{health.checks.map((check) => <div key={check.label} className="flex items-center gap-2 text-xs"><span className={check.pass ? 'text-green-400' : 'text-amber-500'}>{check.pass ? '✓' : '!'}</span><span className={check.pass ? 'text-gray-400' : 'text-amber-300'}>{check.label}</span></div>)}</div>
           </Panel>
           <Panel title={`VARIABLES ${variables.length}`}>
-            {variables.length === 0 ? <p className="text-xs text-gray-600">Use {'{{variable}}'} inside the prompt to create reusable fields.</p> : <div className="space-y-3">{variables.map((key) => <label key={key} className="block"><span className="text-[10px] font-mono text-cyan-700">{key.toUpperCase()}</span><input value={prompt.variables?.[key] || ''} onChange={(event) => onUpdate({ variables: { ...(prompt.variables || {}), [key]: event.target.value } })} className="w-full mt-1 bg-black border border-cyan-900 text-cyan-300 p-2 text-xs outline-none focus:border-cyan-500" /></label>)}</div>}
+            {variables.length === 0 ? <p className="text-xs text-gray-600">Use {'{{variable}}'} inside the prompt to create reusable fields.</p> : <div className="space-y-3">{variables.map((key) => <VariableInput key={key} name={key} value={prompt.variables?.[key] || ''} onChange={(value) => onUpdate({ variables: { ...(prompt.variables || {}), [key]: value } })} />)}</div>}
           </Panel>
         </div>
         <div className="xl:col-span-2"><Panel title="RENDERED_PREVIEW"><pre className="whitespace-pre-wrap text-sm text-cyan-200 bg-black/50 border border-cyan-900/30 p-4 min-h-32">{renderedPrompt}</pre></Panel></div>
       </div>
     </div>
   );
+}
+
+function VariableInput({ name, value, onChange }) {
+  const kind = getVariableInputKind(name);
+  const sharedClass = 'w-full mt-1 bg-black border border-cyan-900 text-cyan-300 p-2 text-xs outline-none focus:border-cyan-500';
+  const label = <span className="text-[10px] font-mono text-cyan-700">{name.toUpperCase()}</span>;
+
+  if (kind === 'textarea') return <label className="block">{label}<textarea rows="4" value={value} onChange={(event) => onChange(event.target.value)} className={`${sharedClass} resize-y`} /></label>;
+  if (kind === 'number') return <label className="block">{label}<input type="number" min="1" value={value} onChange={(event) => onChange(event.target.value)} className={sharedClass} /></label>;
+  if (kind === 'language') return <label className="block">{label}<select value={value} onChange={(event) => onChange(event.target.value)} className={sharedClass}><option value="">AUTO</option><option>English</option><option>Thai</option><option>Multi-language</option></select></label>;
+  if (kind === 'tone') return <label className="block">{label}<input list="prompt-tone-options" value={value} onChange={(event) => onChange(event.target.value)} className={sharedClass} /><datalist id="prompt-tone-options"><option value="Professional" /><option value="Friendly" /><option value="Formal" /><option value="Casual" /><option value="Persuasive" /><option value="Neutral" /></datalist></label>;
+  return <label className="block">{label}<input value={value} onChange={(event) => onChange(event.target.value)} className={sharedClass} /></label>;
 }
 
 function BuilderTab({ prompt, onUpdate }) {
