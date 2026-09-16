@@ -2,6 +2,8 @@ name: Cloudflare Build Check
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -26,13 +28,14 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Build Next.js
+      - name: Build OpenNext Worker
         run: npm run build
 
-      - name: Adapt Next.js build for Cloudflare Workers
-        run: npx opennextjs-cloudflare build --skipNextBuild
-
-      - name: Verify Worker output
+      - name: Verify OpenNext artifacts
         run: |
           test -f .open-next/worker.js
           test -d .open-next/assets
+          test -f .open-next/.build/open-next.config.edge.mjs
+
+      - name: Verify Wrangler can bundle generated Worker
+        run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run
