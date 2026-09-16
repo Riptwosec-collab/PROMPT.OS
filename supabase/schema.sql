@@ -1,4 +1,10 @@
 -- Prompt.OS cloud state: one JSONB document per authenticated user.
+--
+-- V5 migration note:
+-- Keep this legacy table during V5.0 as the rollback/fallback source.
+-- The additive normalized V5 schema lives in `supabase/v5-schema.sql` and
+-- must be reviewed/applied separately. Do not drop `prompt_os_state` as part
+-- of the initial V5 rollout.
 create table if not exists public.prompt_os_state (
   user_id uuid primary key references auth.users(id) on delete cascade,
   payload jsonb not null default '{}'::jsonb,
