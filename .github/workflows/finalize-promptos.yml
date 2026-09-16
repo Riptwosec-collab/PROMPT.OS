@@ -41,3 +41,5 @@ jobs:
           git add -A
           git commit -m "feat: add Prompt.OS main workspace"
           git push origin main
+
+# retry after verified staging chunks
