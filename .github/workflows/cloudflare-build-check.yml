@@ -1,0 +1,39 @@
+name: Cloudflare Build Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Adapt Next.js build for Cloudflare Workers
+        run: npx opennextjs-cloudflare build --skipNextBuild
+
+      - name: Verify Worker output
+        run: |
+          test -f .open-next/worker.js
+          test -d .open-next/assets
