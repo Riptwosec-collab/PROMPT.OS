@@ -12,15 +12,17 @@ test('Cloudflare adapter dependencies are pinned', () => {
 test('Cloudflare Workers build produces OpenNext artifacts before deploy', () => {
   const config = JSON.parse(fs.readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
   assert.equal(pkg.scripts.build, 'opennextjs-cloudflare build');
+  assert.equal(pkg.scripts['build:next'], 'next build');
   assert.equal(config.main, '.open-next/worker.js');
   assert.equal(config.assets.directory, '.open-next/assets');
   assert.ok(config.compatibility_flags.includes('nodejs_compat'));
   assert.equal(config.build, undefined);
 });
 
-test('OpenNext Cloudflare config exists', () => {
+test('OpenNext uses the dedicated Next.js build command instead of recursing into itself', () => {
   const text = fs.readFileSync(new URL('../open-next.config.ts', import.meta.url), 'utf8');
   assert.match(text, /defineCloudflareConfig/);
+  assert.match(text, /buildCommand:\s*['\"]npm run build:next['\"]/);
 });
 
 test('Next.js emits standalone output for OpenNext', () => {
