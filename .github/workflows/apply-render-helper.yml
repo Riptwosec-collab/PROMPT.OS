@@ -1,0 +1,56 @@
+name: Apply Prompt Renderer
+
+on:
+  push:
+    branches:
+      - feat/prompt-library-v1
+    paths:
+      - '.github/workflows/apply-render-helper.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/prompt-library-v1
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Wire shared prompt renderer
+        run: node scripts/apply-render-helper.mjs
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build OpenNext Worker
+        run: npm run build
+
+      - name: Verify generated Worker
+        run: |
+          test -f .open-next/worker.js
+          test -d .open-next/assets
+          test -f .open-next/.build/open-next.config.edge.mjs
+
+      - name: Verify Wrangler bundle
+        run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run
+
+      - name: Commit verified renderer integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add components/PromptOS.jsx
+          git rm scripts/apply-render-helper.mjs .github/workflows/apply-render-helper.yml
+          git commit -m "fix: keep unfilled prompt variables in copied templates"
+          git push origin HEAD:feat/prompt-library-v1
