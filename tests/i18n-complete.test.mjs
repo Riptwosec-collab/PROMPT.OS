@@ -13,6 +13,10 @@ const V5_VISIBLE_LABELS = [
   'English', 'Thai', 'Multi-language',
 ];
 
+const INTENTIONALLY_PRESERVED_TECHNICAL_TOKENS = new Set([
+  'API', 'REST', 'SQL', 'JSON', 'NLP', 'SEO',
+]);
+
 test('all visible V5 shell labels have a Thai rendering', () => {
   const missing = V5_VISIBLE_LABELS.filter((text) => translateCatalogThai('th', text) === text);
   assert.deepEqual(missing, [], `Missing V5 Thai translations: ${missing.join(', ')}`);
@@ -22,6 +26,12 @@ test('dynamic V5 status text renders in Thai', () => {
   assert.equal(translateCatalogThai('th', 'REV 185'), 'รีวิชัน 185');
   assert.equal(translateCatalogThai('th', '3 PENDING'), 'รอซิงก์ 3 รายการ');
   assert.equal(translateCatalogThai('th', 'SYNCED 8s AGO'), 'ซิงก์แล้วเมื่อ 8 วินาทีก่อน');
+});
+
+test('standard technical acronyms stay recognizable in Thai mode', () => {
+  for (const token of INTENTIONALLY_PRESERVED_TECHNICAL_TOKENS) {
+    assert.equal(translateCatalogThai('th', token), token);
+  }
 });
 
 test('all 30 built-in prompt cards have Thai title, description, output format, tags, and variable labels', () => {
@@ -36,6 +46,7 @@ test('all 30 built-in prompt cards have Thai title, description, output format, 
     }
 
     for (const tag of prompt.tags || []) {
+      if (INTENTIONALLY_PRESERVED_TECHNICAL_TOKENS.has(tag)) continue;
       if (translateCatalogThai('th', tag) === tag) missing.push(`${prompt.name}.tag: ${tag}`);
     }
 
