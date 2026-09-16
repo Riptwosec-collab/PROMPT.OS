@@ -65,7 +65,7 @@ create table if not exists public.prompt_os_prompts (
   constraint prompt_os_prompts_folder_owner_fk
     foreign key (folder_id, user_id)
     references public.prompt_os_folders(id, user_id)
-    on delete set null,
+    on delete set null (folder_id),
   constraint prompt_os_prompts_id_user_unique unique (id, user_id),
   constraint prompt_os_prompts_user_legacy_unique unique (user_id, legacy_id)
 );
@@ -191,15 +191,15 @@ create table if not exists public.prompt_os_usage_events (
   constraint prompt_os_usage_events_prompt_owner_fk
     foreign key (prompt_id, user_id)
     references public.prompt_os_prompts(id, user_id)
-    on delete set null,
+    on delete set null (prompt_id),
   constraint prompt_os_usage_events_version_owner_fk
     foreign key (prompt_version_id, user_id)
     references public.prompt_os_prompt_versions(id, user_id)
-    on delete set null,
+    on delete set null (prompt_version_id),
   constraint prompt_os_usage_events_eval_run_owner_fk
     foreign key (evaluation_run_id, user_id)
     references public.prompt_os_evaluation_runs(id, user_id)
-    on delete set null,
+    on delete set null (evaluation_run_id),
   constraint prompt_os_usage_events_pricing_object
     check (jsonb_typeof(pricing_snapshot) = 'object')
 );

@@ -16,12 +16,14 @@ export default function MobileDock({ activePage, onNavigate, onNewPrompt }) {
       {ITEMS.map(([id, label]) => {
         const isNew = id === 'new';
         const active = activePage === id;
+        const disabled = isNew && !onNewPrompt;
         return (
           <button
             key={id}
             type="button"
+            disabled={isNew && !onNewPrompt}
             onClick={() => (isNew ? onNewPrompt?.() : onNavigate(id))}
-            className={`min-h-12 rounded-xl text-[9px] font-mono tracking-[0.12em] ${isNew ? 'bg-cyan-300 text-slate-950 font-black text-lg' : active ? 'bg-cyan-300/10 text-cyan-100' : 'text-slate-500 hover:text-cyan-100'}`}
+            className={`min-h-12 rounded-xl text-[9px] font-mono tracking-[0.12em] ${disabled ? 'bg-slate-800/60 text-slate-600 cursor-not-allowed' : isNew ? 'bg-cyan-300 text-slate-950 font-black text-lg' : active ? 'bg-cyan-300/10 text-cyan-100' : 'text-slate-500 hover:text-cyan-100'}`}
           >
             {label}
           </button>
