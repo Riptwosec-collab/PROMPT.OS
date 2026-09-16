@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import LanguageRuntime from '../components/LanguageRuntime.jsx';
+import { V5FeatureFlagProvider } from '../components/V5FeatureFlagProvider.jsx';
 
 const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
   ssr: false,
@@ -15,7 +16,9 @@ const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
 export default function HomePage() {
   return (
     <LanguageRuntime>
-      <PromptOS />
+      <V5FeatureFlagProvider>
+        <PromptOS />
+      </V5FeatureFlagProvider>
     </LanguageRuntime>
   );
 }
