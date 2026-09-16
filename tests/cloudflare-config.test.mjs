@@ -9,12 +9,13 @@ test('Cloudflare adapter dependencies are pinned', () => {
   assert.equal(pkg.devDependencies.wrangler, '4.131.2');
 });
 
-test('Wrangler deploy converts the existing Next build to OpenNext output', () => {
+test('Cloudflare Workers build produces OpenNext artifacts before deploy', () => {
   const config = JSON.parse(fs.readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
+  assert.equal(pkg.scripts.build, 'opennextjs-cloudflare build');
   assert.equal(config.main, '.open-next/worker.js');
   assert.equal(config.assets.directory, '.open-next/assets');
   assert.ok(config.compatibility_flags.includes('nodejs_compat'));
-  assert.equal(config.build.command, 'npx opennextjs-cloudflare build --skipNextBuild');
+  assert.equal(config.build, undefined);
 });
 
 test('OpenNext Cloudflare config exists', () => {
