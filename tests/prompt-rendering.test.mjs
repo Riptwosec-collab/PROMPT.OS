@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+// Regression coverage for copying/running catalog prompts with partially filled variables.
 async function loadRenderer() {
   try {
     return await import('../lib/prompts/render.mjs');
