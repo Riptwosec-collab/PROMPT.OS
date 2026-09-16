@@ -6,7 +6,7 @@ import {
   LANGUAGE_STORAGE_KEY,
   normalizeLanguage,
 } from '../lib/i18n/runtime.mjs';
-import { translateCatalogThai } from '../lib/i18n/catalog-th.mjs';
+import { translateCatalogThai } from '../lib/i18n/prompt-os.mjs';
 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'PRE', 'CODE', 'TEXTAREA']);
 const TRANSLATABLE_ATTRIBUTES = ['placeholder', 'title', 'aria-label'];
