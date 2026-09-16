@@ -21,3 +21,8 @@ test('OpenNext Cloudflare config exists', () => {
   const text = fs.readFileSync(new URL('../open-next.config.ts', import.meta.url), 'utf8');
   assert.match(text, /defineCloudflareConfig/);
 });
+
+test('Next.js emits standalone output for OpenNext', () => {
+  const text = fs.readFileSync(new URL('../next.config.mjs', import.meta.url), 'utf8');
+  assert.match(text, /output:\s*['\"]standalone['\"]/);
+});
