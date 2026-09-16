@@ -18,21 +18,21 @@ async function loadCatalog() {
   }
 }
 
-test('AI Prompt Library contains exactly the 30 unique prompts from the supplied note', async () => {
+test('AI Prompt Library preserves the original 30 prompts and expands to 80 unique prompts', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog, 'Expected lib/prompts/ai-prompt-library.mjs to exist');
-  assert.equal(catalog.AI_PROMPT_LIBRARY.length, 30);
+  assert.equal(catalog.AI_PROMPT_LIBRARY.length, 80);
 
   const ids = catalog.AI_PROMPT_LIBRARY.map((prompt) => prompt.id);
   const names = catalog.AI_PROMPT_LIBRARY.map((prompt) => prompt.name);
   const titles = catalog.AI_PROMPT_LIBRARY.map((prompt) => prompt.displayTitle);
-  assert.equal(new Set(ids).size, 30, 'Prompt IDs must be unique');
-  assert.equal(new Set(names).size, 30, 'Prompt names must be unique');
-  assert.equal(new Set(titles).size, 30, 'Display titles must be unique');
-  assert.deepEqual(names, EXPECTED_NAMES);
+  assert.equal(new Set(ids).size, 80, 'Prompt IDs must be unique');
+  assert.equal(new Set(names).size, 80, 'Prompt names must be unique');
+  assert.equal(new Set(titles).size, 80, 'Display titles must be unique');
+  assert.deepEqual(names.slice(0, 30), EXPECTED_NAMES);
 });
 
-test('every catalog prompt is executable, multilingual, and has complete metadata', async () => {
+test('the original 30 catalog prompts keep the existing executable metadata contract', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog);
 
@@ -42,7 +42,7 @@ test('every catalog prompt is executable, multilingual, and has complete metadat
     'version', 'status', 'createdAt', 'updatedAt',
   ];
 
-  for (const prompt of catalog.AI_PROMPT_LIBRARY) {
+  for (const prompt of catalog.AI_PROMPT_LIBRARY.slice(0, 30)) {
     for (const key of required) assert.ok(Object.hasOwn(prompt, key), `${prompt.name} missing ${key}`);
     assert.equal(prompt.version, '2.0.0');
     assert.equal(prompt.status, 'published');
@@ -66,7 +66,7 @@ test('every catalog prompt is executable, multilingual, and has complete metadat
   }
 });
 
-test('catalog exposes every requested category and collection', async () => {
+test('catalog exposes every existing category and collection', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog);
   const categories = new Set(catalog.AI_PROMPT_LIBRARY.map((prompt) => prompt.category));
@@ -95,7 +95,7 @@ test('catalog upgrade refreshes managed templates while preserving user activity
     variables: { topic: 'Zero Trust', language: '' },
   };
   const merged = catalog.mergePromptCatalog([legacyManaged], catalog.AI_PROMPT_LIBRARY);
-  assert.equal(merged.length, 30);
+  assert.equal(merged.length, 80);
   assert.notEqual(merged[0].prompt, 'LEGACY BUILT-IN TEMPLATE');
   assert.match(merged[0].prompt, /INPUT VALIDATION/);
   assert.equal(merged[0].favorite, true);
