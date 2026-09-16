@@ -2,14 +2,22 @@
 
 :root {
   color-scheme: dark;
-  background: #050914;
+  background: #02040a;
+  --v5-bg: #02040a;
+  --v5-glass: rgba(8, 15, 29, 0.68);
+  --v5-line: rgba(103, 232, 249, 0.18);
+  --v5-cyan: #67e8f9;
+  --v5-violet: #a78bfa;
+  --v5-success: #34d399;
+  --v5-warning: #fbbf24;
+  --v5-danger: #f87171;
 }
 
 html,
 body {
   margin: 0;
   min-height: 100%;
-  background: #050914;
+  background: var(--v5-bg);
 }
 
 button,
@@ -17,4 +25,36 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+.v5-glass {
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  background: var(--v5-glass);
+  border-color: var(--v5-line);
+}
+
+.v5-ambient {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(103, 232, 249, 0.12), transparent 34%),
+    radial-gradient(circle at 82% 8%, rgba(167, 139, 250, 0.12), transparent 30%),
+    linear-gradient(to right, rgba(103, 232, 249, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(103, 232, 249, 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+}
+
+.v5-legacy-frame > div {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

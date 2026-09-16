@@ -5,8 +5,8 @@ import {
   DEFAULT_LANGUAGE,
   LANGUAGE_STORAGE_KEY,
   normalizeLanguage,
-  translate,
 } from '../lib/i18n/runtime.mjs';
+import { translateCatalogThai } from '../lib/i18n/catalog-th.mjs';
 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'PRE', 'CODE', 'TEXTAREA']);
 const TRANSLATABLE_ATTRIBUTES = ['placeholder', 'title', 'aria-label'];
@@ -48,7 +48,7 @@ export default function LanguageRuntime({ children }) {
       const source = remembered && current === remembered.rendered ? remembered.source : current;
       const { before, core, after } = splitWhitespace(source);
       if (!core) return;
-      const rendered = `${before}${translate(language, core)}${after}`;
+      const rendered = `${before}${translateCatalogThai(language, core)}${after}`;
       textMemory.set(node, { source, rendered });
       if (current !== rendered) node.nodeValue = rendered;
     };
@@ -66,7 +66,7 @@ export default function LanguageRuntime({ children }) {
         const current = element.getAttribute(attribute) || '';
         const remembered = memory[attribute];
         const source = remembered && current === remembered.rendered ? remembered.source : current;
-        const rendered = translate(language, source);
+        const rendered = translateCatalogThai(language, source);
         memory[attribute] = { source, rendered };
         if (current !== rendered) element.setAttribute(attribute, rendered);
       }
@@ -99,8 +99,8 @@ export default function LanguageRuntime({ children }) {
 
     const nativeConfirm = window.confirm.bind(window);
     const nativeAlert = window.alert.bind(window);
-    window.confirm = (message) => nativeConfirm(translate(languageRef.current, message));
-    window.alert = (message) => nativeAlert(translate(languageRef.current, message));
+    window.confirm = (message) => nativeConfirm(translateCatalogThai(languageRef.current, message));
+    window.alert = (message) => nativeAlert(translateCatalogThai(languageRef.current, message));
 
     return () => {
       observer.disconnect();
@@ -115,7 +115,7 @@ export default function LanguageRuntime({ children }) {
       <div
         data-i18n-control="true"
         className="fixed bottom-4 right-4 z-[250] flex items-center gap-1 rounded-xl border border-cyan-700/60 bg-[#02060d]/95 p-1 font-mono text-[10px] shadow-[0_0_30px_rgba(6,182,212,0.18)] backdrop-blur-xl"
-        aria-label="Language switcher"
+        aria-label={language === 'th' ? 'ตัวเลือกภาษา' : 'Language switcher'}
       >
         <button
           type="button"

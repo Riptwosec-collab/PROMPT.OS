@@ -32,27 +32,37 @@ test('AI Prompt Library contains exactly the 30 unique prompts from the supplied
   assert.deepEqual(names, EXPECTED_NAMES);
 });
 
-test('every catalog prompt includes the required metadata and valid variables', async () => {
+test('every catalog prompt is executable, multilingual, and has complete metadata', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog);
 
   const required = [
     'id', 'name', 'displayTitle', 'description', 'category', 'subcategory', 'promptType', 'prompt',
-    'variables', 'tags', 'collections', 'language', 'outputFormat', 'compatibleModels', 'sourceType',
+    'variables', 'variableConfig', 'tags', 'collections', 'language', 'outputFormat', 'compatibleModels', 'sourceType',
     'version', 'status', 'createdAt', 'updatedAt',
   ];
 
   for (const prompt of catalog.AI_PROMPT_LIBRARY) {
     for (const key of required) assert.ok(Object.hasOwn(prompt, key), `${prompt.name} missing ${key}`);
-    assert.equal(prompt.version, '1.0.0');
+    assert.equal(prompt.version, '2.0.0');
     assert.equal(prompt.status, 'published');
     assert.deepEqual(prompt.compatibleModels, ['GPT', 'Claude', 'Gemini']);
     assert.ok(prompt.collections.includes('AI Prompt Library'));
-    assert.ok(prompt.prompt.trim().length > 0, `${prompt.name} has an empty prompt`);
+    assert.ok(prompt.tags.includes('EXECUTABLE'));
+    assert.ok(prompt.prompt.includes('INPUT VALIDATION'));
+    assert.ok(prompt.prompt.includes('RELIABILITY RULES'));
+    assert.ok(prompt.prompt.includes('Respond in {{language}}'));
+    assert.equal(prompt.variables.language, 'Thai');
+    assert.equal(prompt.variableConfig.language.defaultValue, 'Thai');
+    assert.equal(prompt.variableConfig.language.required, true);
 
     const detected = catalog.extractCatalogVariables(prompt.prompt).sort();
     const configured = Object.keys(prompt.variables).sort();
     assert.deepEqual(configured, detected, `${prompt.name} variable config must match {{variables}}`);
+
+    for (const name of detected) {
+      assert.equal(prompt.variableConfig[name]?.required, true, `${prompt.name}.${name} must be required`);
+    }
   }
 });
 
@@ -69,15 +79,32 @@ test('catalog exposes every requested category and collection', async () => {
   }
 });
 
-test('duplicate detection preserves existing prompts instead of overwriting them', async () => {
+test('catalog upgrade refreshes managed templates while preserving user activity state', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog);
   const seeded = catalog.AI_PROMPT_LIBRARY[0];
-  const customized = { ...seeded, title: 'MY CUSTOM TITLE', prompt: 'CUSTOMIZED BY USER' };
-  const merged = catalog.mergePromptCatalog([customized], catalog.AI_PROMPT_LIBRARY);
+  const legacyManaged = {
+    ...seeded,
+    prompt: 'LEGACY BUILT-IN TEMPLATE',
+    version: '1.0.0',
+    favorite: true,
+    pinned: true,
+    runs: 7,
+    copyCount: 3,
+    results: [{ id: 'r1', content: 'kept' }],
+    variables: { topic: 'Zero Trust', language: '' },
+  };
+  const merged = catalog.mergePromptCatalog([legacyManaged], catalog.AI_PROMPT_LIBRARY);
   assert.equal(merged.length, 30);
-  assert.equal(merged[0].prompt, 'CUSTOMIZED BY USER');
-  assert.equal(merged[0].title, 'MY CUSTOM TITLE');
+  assert.notEqual(merged[0].prompt, 'LEGACY BUILT-IN TEMPLATE');
+  assert.match(merged[0].prompt, /INPUT VALIDATION/);
+  assert.equal(merged[0].favorite, true);
+  assert.equal(merged[0].pinned, true);
+  assert.equal(merged[0].runs, 7);
+  assert.equal(merged[0].copyCount, 3);
+  assert.equal(merged[0].results.length, 1);
+  assert.equal(merged[0].variables.topic, 'Zero Trust');
+  assert.equal(merged[0].variables.language, 'Thai');
 });
 
 test('variable field inference supports note requirements', async () => {
