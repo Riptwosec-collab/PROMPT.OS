@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+const EXPECTED_NAMES = [
+  'DEEP_RESEARCH_ASSISTANT', 'FACT_CHECKER', 'ARTICLE_ANALYZER', 'PAPER_ANALYZER', 'SOURCE_COMPARATOR',
+  'CODE_REVIEWER', 'BUG_HUNTER', 'UNIT_TEST_GENERATOR', 'CODE_OPTIMIZER', 'TIME_COMPLEXITY_ANALYZER',
+  'REGEX_GENERATOR', 'DOCKER_GENERATOR', 'API_DESIGNER', 'DATABASE_SCHEMA_DESIGNER', 'JSON_EXTRACTOR',
+  'TABLE_EXTRACTOR', 'SENTIMENT_ANALYZER', 'DATA_CLASSIFIER', 'IMAGE_OBJECT_ANALYZER', 'IMAGE_TO_JSON',
+  'VIDEO_QA', 'AUDIO_TRANSCRIBER', 'BLOG_GENERATOR', 'SEO_CONTENT_WRITER', 'SOCIAL_CONTENT_GENERATOR',
+  'MEETING_SUMMARIZER', 'ACTION_ITEM_EXTRACTOR', 'PRESENTATION_BUILDER', 'PERSONAL_TUTOR', 'QUIZ_GENERATOR',
+];
+
 async function loadCatalog() {
   try {
     return await import('../lib/prompts/ai-prompt-library.mjs');
@@ -9,7 +18,7 @@ async function loadCatalog() {
   }
 }
 
-test('AI Prompt Library contains exactly 30 unique prompts from the supplied note', async () => {
+test('AI Prompt Library contains exactly the 30 unique prompts from the supplied note', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog, 'Expected lib/prompts/ai-prompt-library.mjs to exist');
   assert.equal(catalog.AI_PROMPT_LIBRARY.length, 30);
@@ -20,6 +29,7 @@ test('AI Prompt Library contains exactly 30 unique prompts from the supplied not
   assert.equal(new Set(ids).size, 30, 'Prompt IDs must be unique');
   assert.equal(new Set(names).size, 30, 'Prompt names must be unique');
   assert.equal(new Set(titles).size, 30, 'Display titles must be unique');
+  assert.deepEqual(names, EXPECTED_NAMES);
 });
 
 test('every catalog prompt includes the required metadata and valid variables', async () => {
