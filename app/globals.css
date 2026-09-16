@@ -43,6 +43,11 @@ select {
   background-size: auto, auto, 32px 32px, 32px 32px;
 }
 
+.v5-legacy-frame > div {
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
