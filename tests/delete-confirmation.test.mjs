@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { translate } from '../lib/i18n/runtime.mjs';
 
 async function loadDeleteConfirmation() {
   try {
@@ -46,4 +47,15 @@ test('first rejection short-circuits without asking again', async () => {
 
   assert.equal(result, false);
   assert.equal(calls, 1);
+});
+
+test('second confirmations are translated to Thai', () => {
+  assert.equal(
+    translate('th', 'Confirm again: move DEMO_PROMPT to Trash?'),
+    'ยืนยันอีกครั้ง: ย้าย DEMO_PROMPT ไปถังขยะหรือไม่?',
+  );
+  assert.equal(
+    translate('th', 'FINAL CONFIRMATION: permanently delete DEMO_PROMPT?'),
+    'ยืนยันครั้งสุดท้าย: ลบ DEMO_PROMPT ถาวรหรือไม่?',
+  );
 });
