@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver Prompt.OS V5 incrementally as six independently testable phases without rewriting the existing application.
+**Goal:** Deliver Prompt.OS V5 incrementally as seven independently testable phases without rewriting the existing application.
 
 **Architecture:** Keep the current Next.js/OpenNext/Cloudflare foundation and progressively extract domain logic from `components/PromptOS.jsx` into focused modules. Each phase leaves the app in a working state, preserves V4 data, and is gated by tests plus OpenNext/Wrangler verification.
 
@@ -26,6 +26,7 @@
 
 ## Plan Sequence
 
+0. `2026-09-16-prompt-os-v5-phase0-foundation.md` — centralized feature flags and rollout foundation.
 1. `2026-09-16-prompt-os-v5-phase1-shell-command.md` — V5 shell, visual system, Mission Control foundation, global navigation, command palette.
 2. `2026-09-16-prompt-os-v5-phase2-workspace-variables.md` — Workspace V2, folders, saved views, Variables V2, prompt inspector refactor.
 3. `2026-09-16-prompt-os-v5-phase3-cloud-sync.md` — normalized Supabase schema, V4 migration, cloud-first revision sync, offline queue, snapshots, realtime.
