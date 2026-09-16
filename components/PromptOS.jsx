@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CloudSyncPanel from './CloudSyncPanel.jsx';
 import { streamAiRun } from '../lib/ai/run-stream.mjs';
 import { AI_PROMPT_COLLECTIONS, AI_PROMPT_LIBRARY, PROMPT_CATALOG_VERSION, getVariableInputKind, mergePromptCatalog } from '../lib/prompts/ai-prompt-library.mjs';
+import { renderPromptVariables } from '../lib/prompts/render.mjs';
 import { confirmDestructiveAction } from '../lib/ui/confirm-delete.mjs';
 
 const STORAGE_KEY = 'promptVaultData';
@@ -203,10 +204,6 @@ function serializeDatabase(prompts, collections) {
 function extractVariables(prompt = '') {
   const matches = [...String(prompt).matchAll(/{{\s*([a-zA-Z0-9_.-]+)\s*}}/g)];
   return [...new Set(matches.map((match) => match[1]))];
-}
-
-function renderPromptVariables(prompt, values = {}) {
-  return String(prompt || '').replace(/{{\s*([a-zA-Z0-9_.-]+)\s*}}/g, (full, key) => values[key] ?? full);
 }
 
 function compileBuilder(builder) {
