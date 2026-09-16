@@ -17,6 +17,8 @@ const INTENTIONALLY_PRESERVED_TECHNICAL_TOKENS = new Set([
   'API', 'REST', 'SQL', 'JSON', 'NLP', 'SEO',
 ]);
 
+const hasThai = (value) => /[ก-๙]/.test(String(value || ''));
+
 test('all visible V5 shell labels have a Thai rendering', () => {
   const missing = V5_VISIBLE_LABELS.filter((text) => translateCatalogThai('th', text) === text);
   assert.deepEqual(missing, [], `Missing V5 Thai translations: ${missing.join(', ')}`);
@@ -34,11 +36,12 @@ test('standard technical acronyms stay recognizable in Thai mode', () => {
   }
 });
 
-test('all 30 built-in prompt cards have Thai title, description, output format, tags, and variable labels', () => {
-  assert.equal(AI_PROMPT_LIBRARY.length, 30);
+test('the original 30 built-in prompt cards keep dictionary-backed Thai rendering', () => {
+  const legacyPrompts = AI_PROMPT_LIBRARY.slice(0, 30);
+  assert.equal(legacyPrompts.length, 30);
 
   const missing = [];
-  for (const prompt of AI_PROMPT_LIBRARY) {
+  for (const prompt of legacyPrompts) {
     for (const field of ['displayTitle', 'description', 'outputFormat']) {
       const source = prompt[field];
       const translated = translateCatalogThai('th', source);
@@ -57,6 +60,26 @@ test('all 30 built-in prompt cards have Thai title, description, output format, 
   }
 
   assert.deepEqual(missing, [], `Missing prompt Thai translations:\n${missing.join('\n')}`);
+});
+
+test('the 50 researched prompts carry direct Thai title, description, usage, category, and variable labels', () => {
+  assert.equal(AI_PROMPT_LIBRARY.length, 80);
+  const researchedPrompts = AI_PROMPT_LIBRARY.slice(30);
+  assert.equal(researchedPrompts.length, 50);
+
+  const missing = [];
+  for (const prompt of researchedPrompts) {
+    if (!hasThai(prompt.displayTitleTh)) missing.push(`${prompt.name}.displayTitleTh`);
+    if (!hasThai(prompt.descriptionTh)) missing.push(`${prompt.name}.descriptionTh`);
+    if (!hasThai(prompt.usageGuideTh)) missing.push(`${prompt.name}.usageGuideTh`);
+    if (!prompt.categoryTh) missing.push(`${prompt.name}.categoryTh`);
+
+    for (const [name, config] of Object.entries(prompt.variableConfig || {})) {
+      if (!config.labelTh) missing.push(`${prompt.name}.variableConfig.${name}.labelTh`);
+    }
+  }
+
+  assert.deepEqual(missing, [], `Missing researched prompt Thai metadata:\n${missing.join('\n')}`);
 });
 
 test('runtime UI uses the final catalog-aware translation layer', () => {
