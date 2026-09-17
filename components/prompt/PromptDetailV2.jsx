@@ -8,6 +8,8 @@ import { renderPromptTemplate } from '../../lib/variables/render-prompt.mjs';
 
 export default function PromptDetailV2({
   prompt,
+  variablesEnabled = false,
+  healthEnabled = false,
   onClose,
   onRun,
   onFavorite,
@@ -28,10 +30,16 @@ export default function PromptDetailV2({
   if (!prompt) return null;
 
   const run = async () => {
-    const validation = validatePromptVariables(variableConfig, values);
-    setFieldErrors(validation.errors);
-    setRunError('');
-    if (!validation.ok || rendered.unresolvedRequired.length > 0) return;
+    if (variablesEnabled) {
+      const validation = validatePromptVariables(variableConfig, values);
+      setFieldErrors(validation.errors);
+      setRunError('');
+      if (!validation.ok || rendered.unresolvedRequired.length > 0) return;
+    } else {
+      setFieldErrors({});
+      setRunError('');
+    }
+
     if (!onRun) {
       setRunError('Execution is not enabled for this V5 preview yet.');
       return;
@@ -80,7 +88,7 @@ export default function PromptDetailV2({
               ))}
             </div>
             <div className="mt-4 text-xs text-slate-500">Version {prompt.version || '—'}</div>
-            <div className="mt-4"><PromptHealth prompt={prompt} /></div>
+            {healthEnabled && <div className="mt-4"><PromptHealth prompt={prompt} /></div>}
           </aside>
 
           <main data-region="inputs" className="v5-glass order-2 rounded-2xl border border-white/10 p-4">
@@ -89,12 +97,18 @@ export default function PromptDetailV2({
               <h2 className="mt-1 text-lg font-semibold text-white">Prompt Variables</h2>
               <p className="mt-1 text-xs text-slate-500">Required fields are marked with *.</p>
             </div>
-            <PromptVariableForm variableConfig={variableConfig} values={values} onChange={setValues} errors={fieldErrors} />
-            {rendered.unresolvedRequired.length > 0 ? (
-              <div className="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/5 p-3 text-xs text-rose-200">
-                Required: {rendered.unresolvedRequired.join(', ')}
-              </div>
-            ) : null}
+            {variablesEnabled ? (
+              <>
+                <PromptVariableForm variableConfig={variableConfig} values={values} onChange={setValues} errors={fieldErrors} />
+                {rendered.unresolvedRequired.length > 0 ? (
+                  <div className="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/5 p-3 text-xs text-rose-200">
+                    Required: {rendered.unresolvedRequired.join(', ')}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-slate-500">Variables V2 is staged behind its feature flag.</p>
+            )}
           </main>
 
           <section data-region="preview" className="v5-glass order-3 rounded-2xl border border-white/10 p-4">
