@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { translate } from '../lib/i18n/runtime.mjs';
+import { translateCatalogThai } from '../lib/i18n/catalog-th.mjs';
 
 const REQUIRED_UI_TEXT = [
   'Favorite', 'Pin', 'COPIED_SUCCESS', 'EXECUTE_COPY', 'IMG', 'TXT',
@@ -24,9 +25,32 @@ const REQUIRED_UI_TEXT = [
   'Manual', 'Manual Result',
 ];
 
+const V5_CORE_UI_TEXT = [
+  'Prompt Library', 'Search prompts', 'Prompt Variables', 'Rendered Prompt', 'Prompt Health',
+  'Smart Collections', 'Prompt Packs', 'Workspace', 'Recently Used', 'Most Used',
+  'Continue Working', 'Add all to Workspace', 'No matching prompts',
+];
+
 test('all known user-facing Prompt.OS labels have a Thai rendering', () => {
   const missing = REQUIRED_UI_TEXT.filter((text) => translate('th', text) === text);
   assert.deepEqual(missing, [], `Missing Thai translations: ${missing.join(', ')}`);
+});
+
+test('V5 core experience source labels resolve through the catalog-aware Thai layer', () => {
+  const missing = V5_CORE_UI_TEXT.filter((text) => translateCatalogThai('th', text) === text);
+  assert.deepEqual(missing, [], `Missing V5 core translations: ${missing.join(', ')}`);
+
+  const files = [
+    'components/prompt/PromptLibraryV5.jsx',
+    'components/prompt/PromptDetailV2.jsx',
+    'components/prompt/PromptVariableForm.jsx',
+    'components/prompt/PromptHealth.jsx',
+    'components/prompt/PromptPacks.jsx',
+    'components/workspace/WorkspaceSidebar.jsx',
+  ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
+  for (const label of ['Prompt Library', 'Prompt Variables', 'Rendered Prompt', 'Prompt Health', 'Prompt Packs', 'Workspace']) {
+    assert.match(files, new RegExp(label));
+  }
 });
 
 test('dynamic destructive actions and counters render in Thai', () => {
