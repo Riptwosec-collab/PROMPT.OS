@@ -48,7 +48,7 @@ test('V5 core experience source labels resolve through the catalog-aware Thai la
     'components/prompt/PromptPacks.jsx',
     'components/workspace/WorkspaceSidebar.jsx',
   ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
-  for (const label of ['Prompt Library', 'Prompt Variables', 'Rendered Prompt', 'Prompt Health', 'Prompt Packs', 'Workspace']) {
+  for (const label of ['Prompt Library', 'Prompt Variables', 'Rendered Prompt', 'Prompt Health', 'PROMPT PACKS', 'WORKSPACE']) {
     assert.match(files, new RegExp(label));
   }
 });
