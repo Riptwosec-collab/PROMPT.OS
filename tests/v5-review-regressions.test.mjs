@@ -37,3 +37,13 @@ test('V5 shell respects feature flags and mobile add is not a dead control', () 
   assert.match(page, /if \(!v5ShellEnabled\)/);
   assert.match(dock, /disabled=\{isNew && !onNewPrompt\}/);
 });
+
+test('Legacy PromptOS wires V5 migration and shared selectors without removing fallback', () => {
+  const page = read('app/page.jsx');
+  const promptOS = read('components/PromptOS.jsx');
+  assert.match(page, /if \(!v5ShellEnabled\)/);
+  assert.match(page, /<PromptOS \/>/);
+  assert.match(promptOS, /migratePromptState/);
+  assert.match(promptOS, /selectVisiblePrompts/);
+  assert.match(promptOS, /selectPromptById/);
+});
