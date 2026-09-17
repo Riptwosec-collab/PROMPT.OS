@@ -4,6 +4,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CloudSyncPanel from './CloudSyncPanel.jsx';
 import { streamAiRun } from '../lib/ai/run-stream.mjs';
 import { AI_PROMPT_COLLECTIONS, AI_PROMPT_LIBRARY, PROMPT_CATALOG_VERSION, getVariableInputKind, mergePromptCatalog } from '../lib/prompts/ai-prompt-library.mjs';
+import { migratePromptState } from '../lib/prompts/state-migration.mjs';
+import {
+  selectVisiblePrompts,
+  selectPromptById,
+  selectFavoritePrompts,
+  selectPinnedPrompts,
+} from '../lib/prompts/state-selectors.mjs';
 import { renderPromptVariables } from '../lib/prompts/render.mjs';
 import { confirmDestructiveAction } from '../lib/ui/confirm-delete.mjs';
 
@@ -106,6 +113,7 @@ function upgradePrompt(prompt = {}, index = 0) {
       }];
 
   return {
+    ...prompt,
     id: prompt.id ?? Date.now() + index,
     name: prompt.name || prompt.title || 'UNTITLED_PROMPT',
     displayTitle: prompt.displayTitle || prompt.title || prompt.name || 'UNTITLED_PROMPT',
@@ -144,10 +152,20 @@ function upgradePrompt(prompt = {}, index = 0) {
   };
 }
 
+function migrateAppliedPrompts(prompts) {
+  const migration = migratePromptState(prompts);
+  if (!migration.ok) {
+    throw new Error(`Prompt state migration failed: ${migration.errors.join('; ')}`);
+  }
+  return migration.prompts;
+}
+
 function applyPromptCatalog(prompts = [], catalogVersion = null) {
   const upgraded = prompts.map(upgradePrompt);
-  if (catalogVersion === PROMPT_CATALOG_VERSION) return upgraded;
-  return mergePromptCatalog(upgraded, AI_PROMPT_LIBRARY).map(upgradePrompt);
+  const cataloged = catalogVersion === PROMPT_CATALOG_VERSION
+    ? upgraded
+    : mergePromptCatalog(upgraded, AI_PROMPT_LIBRARY).map(upgradePrompt);
+  return migrateAppliedPrompts(cataloged);
 }
 
 function normalizeDatabase(raw) {
@@ -253,7 +271,7 @@ function promptHealth(prompt) {
 }
 
 function buildAnalytics(prompts) {
-  const active = prompts.filter((prompt) => !prompt.deletedAt);
+  const active = selectVisiblePrompts(prompts);
   const allResults = active.flatMap((prompt) => prompt.results || []);
   const rated = allResults.filter((result) => result.rating > 0);
   const avgRating = rated.length
@@ -278,8 +296,8 @@ function buildAnalytics(prompts) {
     totalRuns: active.reduce((sum, prompt) => sum + (prompt.runs || 0), 0),
     totalResults: allResults.length,
     totalCopies: active.reduce((sum, prompt) => sum + (prompt.copyCount || 0), 0),
-    favorites: active.filter((prompt) => prompt.favorite).length,
-    pinned: active.filter((prompt) => prompt.pinned).length,
+    favorites: selectFavoritePrompts(active).length,
+    pinned: selectPinnedPrompts(active).length,
     avgRating,
     categoryMap,
     statusMap,
@@ -337,8 +355,8 @@ export default function PromptOS() {
     return () => clearTimeout(timer);
   }, [prompts, collections]);
 
-  const activePrompt = prompts.find((prompt) => prompt.id === selectedPromptId && !prompt.deletedAt);
-  const activePrompts = prompts.filter((prompt) => !prompt.deletedAt);
+  const activePrompt = selectPromptById(prompts, selectedPromptId);
+  const activePrompts = selectVisiblePrompts(prompts);
   const trashedPrompts = prompts.filter((prompt) => prompt.deletedAt);
   const analytics = useMemo(() => buildAnalytics(prompts), [prompts]);
   const categories = useMemo(
@@ -387,6 +405,12 @@ export default function PromptOS() {
     return items;
   }, [activePrompts, searchTerm, filters, sortMode]);
 
+  const viewPrompts = useMemo(() => {
+    if (currentView === 'favorites') return selectFavoritePrompts(filteredPrompts);
+    if (currentView === 'pinned') return selectPinnedPrompts(filteredPrompts);
+    return filteredPrompts;
+  }, [filteredPrompts, currentView]);
+
   const updatePrompt = (updated) => {
     setPrompts((current) => current.map((prompt) => (prompt.id === updated.id ? updated : prompt)));
   };
@@ -426,7 +450,7 @@ export default function PromptOS() {
   const restorePrompt = (id) => patchPrompt(id, { deletedAt: null });
 
   const permanentlyDelete = (id) => {
-    const prompt = prompts.find((item) => item.id === id);
+    const prompt = selectPromptById(prompts, id, { includeDeleted: true });
     if (!confirmDestructiveAction(window.confirm, `Delete ${prompt?.title || 'this prompt'} forever? This cannot be undone.`, `FINAL CONFIRMATION: permanently delete ${prompt?.title || 'this prompt'}?`)) return;
     setPrompts((current) => current.filter((item) => item.id !== id));
   };
@@ -635,11 +659,7 @@ export default function PromptOS() {
             <TrashView prompts={trashedPrompts} onRestore={restorePrompt} onPermanentDelete={permanentlyDelete} />
           ) : (
             <LibraryView
-              prompts={filteredPrompts.filter((prompt) => {
-                if (currentView === 'favorites') return prompt.favorite;
-                if (currentView === 'pinned') return prompt.pinned;
-                return true;
-              })}
+              prompts={viewPrompts}
               searchTerm={searchTerm}
               filters={filters}
               setFilters={setFilters}
