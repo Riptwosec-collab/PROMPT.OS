@@ -2,17 +2,27 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import PromptSearch from './PromptSearch.jsx';
-import { AI_PROMPT_LIBRARY, mergePromptCatalog } from '../../lib/prompts/ai-prompt-library.mjs';
+import PromptDetailV2 from './PromptDetailV2.jsx';
+import { AI_PROMPT_LIBRARY, PROMPT_CATALOG_VERSION, mergePromptCatalog } from '../../lib/prompts/ai-prompt-library.mjs';
 import { migratePromptState } from '../../lib/prompts/state-migration.mjs';
 import { searchPrompts } from '../../lib/search/prompt-search.mjs';
 
 const STORAGE_KEY = 'promptVaultData';
 
+function readStoredDatabase() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 function loadPrompts() {
   if (typeof window === 'undefined') return AI_PROMPT_LIBRARY;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : null;
+    const parsed = readStoredDatabase();
     const localPrompts = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.prompts) ? parsed.prompts : [];
     const merged = mergePromptCatalog(localPrompts, AI_PROMPT_LIBRARY);
     const migration = migratePromptState(merged);
@@ -23,14 +33,32 @@ function loadPrompts() {
   }
 }
 
+function persistPrompts(prompts) {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = readStoredDatabase();
+    const base = existing && !Array.isArray(existing) && typeof existing === 'object' ? existing : {};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...base,
+      schemaVersion: Math.max(Number(base.schemaVersion || 0), 5),
+      catalogVersion: PROMPT_CATALOG_VERSION,
+      prompts,
+      updatedAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.error('Failed to persist V5 prompt library', error);
+  }
+}
+
 function uniqueValues(prompts, key) {
   return [...new Set(prompts.map((prompt) => prompt?.[key]).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
 }
 
-export default function PromptLibraryV5({ onOpenPrompt }) {
+export default function PromptLibraryV5({ detailEnabled = false, onOpenPrompt, onRunPrompt }) {
   const [prompts, setPrompts] = useState(() => AI_PROMPT_LIBRARY);
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState({});
+  const [selectedPromptId, setSelectedPromptId] = useState(null);
 
   useEffect(() => {
     setPrompts(loadPrompts());
@@ -40,6 +68,32 @@ export default function PromptLibraryV5({ onOpenPrompt }) {
   const difficulties = useMemo(() => uniqueValues(prompts, 'difficulty'), [prompts]);
   const sources = useMemo(() => uniqueValues(prompts, 'sourceType'), [prompts]);
   const results = useMemo(() => searchPrompts(prompts, query, filters), [prompts, query, filters]);
+  const selectedPrompt = useMemo(() => prompts.find((prompt) => prompt.id === selectedPromptId) || null, [prompts, selectedPromptId]);
+
+  const openPrompt = (id) => {
+    onOpenPrompt?.(id);
+    if (detailEnabled) setSelectedPromptId(id);
+  };
+
+  const patchPrompt = (id, patch) => {
+    setPrompts((current) => {
+      const next = current.map((prompt) => prompt.id === id ? { ...prompt, ...patch, updatedAt: new Date().toISOString() } : prompt);
+      persistPrompts(next);
+      return next;
+    });
+  };
+
+  if (detailEnabled && selectedPrompt) {
+    return (
+      <PromptDetailV2
+        prompt={selectedPrompt}
+        onClose={() => setSelectedPromptId(null)}
+        onRun={onRunPrompt}
+        onFavorite={(id, favorite) => patchPrompt(id, { favorite })}
+        onPin={(id, pinned) => patchPrompt(id, { pinned })}
+      />
+    );
+  }
 
   return (
     <section className="h-full overflow-auto p-3 md:p-6" data-v5-library>
@@ -68,7 +122,7 @@ export default function PromptLibraryV5({ onOpenPrompt }) {
             <button
               key={prompt.id}
               type="button"
-              onClick={() => onOpenPrompt?.(prompt.id)}
+              onClick={() => openPrompt(prompt.id)}
               className="v5-glass group min-w-0 rounded-2xl border border-white/10 p-4 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/30"
               data-prompt-id={prompt.id}
             >
