@@ -85,6 +85,8 @@ function loadOrganization(prompts) {
 
 export default function PromptLibraryV5({
   detailEnabled = false,
+  variablesEnabled = false,
+  healthEnabled = false,
   workspaceEnabled = false,
   smartCollectionsEnabled = false,
   onOpenPrompt,
@@ -167,6 +169,8 @@ export default function PromptLibraryV5({
     return (
       <PromptDetailV2
         prompt={selectedPrompt}
+        variablesEnabled={variablesEnabled}
+        healthEnabled={healthEnabled}
         onClose={() => setSelectedPromptId(null)}
         onRun={onRunPrompt}
         onFavorite={(id, favorite) => patchPrompt(id, { favorite })}
