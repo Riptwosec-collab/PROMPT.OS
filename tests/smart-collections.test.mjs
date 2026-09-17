@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSmartCollections } from '../lib/prompts/smart-collections.mjs';
+import { createPack, addPromptToPack, removePromptFromPack } from '../lib/prompts/packs.mjs';
 
 const NOW = new Date('2026-09-17T08:00:00.000Z');
 
@@ -24,4 +25,28 @@ test('buildSmartCollections returns deterministic non-mutating smart views', () 
   assert.deepEqual(views.hasVariables.map((item) => item.id), ['a', 'c']);
   assert.ok(views.quickPrompts.some((item) => item.id === 'b'));
   assert.deepEqual(prompts, snapshot);
+});
+
+test('prompt packs store prompt ids only and prevent duplicate membership', () => {
+  const pack = createPack({ id: 'network', name: 'Network Engineer', promptIds: ['a', 'a', 'b'] });
+  assert.deepEqual(pack.promptIds, ['a', 'b']);
+  assert.equal(pack.prompts, undefined);
+
+  const same = addPromptToPack(pack, 'a');
+  assert.deepEqual(same.promptIds, ['a', 'b']);
+
+  const added = addPromptToPack(pack, 'c');
+  assert.deepEqual(added.promptIds, ['a', 'b', 'c']);
+  assert.deepEqual(pack.promptIds, ['a', 'b']);
+});
+
+test('the same prompt can belong to multiple packs without cloning prompt records', () => {
+  const first = createPack({ id: 'one', name: 'One', promptIds: ['a'] });
+  const second = createPack({ id: 'two', name: 'Two', promptIds: ['a', 'c'] });
+  assert.deepEqual(first.promptIds, ['a']);
+  assert.deepEqual(second.promptIds, ['a', 'c']);
+
+  const removed = removePromptFromPack(second, 'a');
+  assert.deepEqual(removed.promptIds, ['c']);
+  assert.deepEqual(first.promptIds, ['a']);
 });
