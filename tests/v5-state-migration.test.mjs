@@ -41,3 +41,9 @@ test('failed migration leaves the source array and records unchanged', () => {
   assert.strictEqual(result.prompts, source);
   assert.ok(result.errors.length > 0);
 });
+
+test('legacy numeric prompt ids remain valid during V5 migration', () => {
+  const result = migratePromptState([{ id: 1, name: 'LEGACY', prompt: 'Hello' }]);
+  assert.equal(result.ok, true);
+  assert.equal(result.prompts[0].id, 1);
+});

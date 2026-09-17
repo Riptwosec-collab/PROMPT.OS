@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {
   selectVisiblePrompts,
   selectPromptById,
@@ -25,4 +26,15 @@ test('prompt lookup excludes deleted records by default and can include them exp
   assert.equal(selectPromptById(prompts, 'c'), null);
   assert.equal(selectPromptById(prompts, 'c', { includeDeleted: true })?.id, 'c');
   assert.equal(selectPromptById(prompts, 'missing'), null);
+});
+
+test('PromptOS delegates V5 migration and shared prompt selection to foundation modules', () => {
+  const source = fs.readFileSync('components/PromptOS.jsx', 'utf8');
+  assert.match(source, /state-migration\.mjs/);
+  assert.match(source, /migratePromptState/);
+  assert.match(source, /state-selectors\.mjs/);
+  assert.match(source, /selectVisiblePrompts/);
+  assert.match(source, /selectPromptById/);
+  assert.match(source, /selectFavoritePrompts/);
+  assert.match(source, /selectPinnedPrompts/);
 });
