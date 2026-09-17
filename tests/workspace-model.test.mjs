@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeWorkspaceState, movePrompt, reorderByIds } from '../lib/workspace/model.mjs';
+import {
+  normalizeWorkspaceState,
+  movePrompt,
+  reorderByIds,
+  createWorkspace,
+  createFolder,
+  movePromptToFolder,
+  removePromptFromFolder,
+} from '../lib/workspace/model.mjs';
 import { applySmartView } from '../lib/workspace/smart-views.mjs';
 
 test('legacy data gets a default personal workspace', () => {
@@ -14,6 +22,27 @@ test('movePrompt changes metadata without duplicating prompt', () => {
   assert.equal(result.length, 1);
   assert.equal(result[0].workspaceId, 'work');
   assert.equal(result[0].folderId, 'network');
+});
+
+test('workspace and folder factories create reference-only organization records', () => {
+  const workspace = createWorkspace({ id: 'work', name: 'Work' });
+  const folder = createFolder({ id: 'network', workspaceId: workspace.id, name: 'Network' });
+  assert.deepEqual(workspace, { id: 'work', name: 'Work', order: 0, archivedAt: null });
+  assert.deepEqual(folder, { id: 'network', workspaceId: 'work', name: 'Network', order: 0, archivedAt: null });
+  assert.equal(folder.prompts, undefined);
+});
+
+test('moving and removing folder membership never duplicates or deletes prompt records', () => {
+  const source = [{ id: 'p1', title: 'A', workspaceId: 'personal', folderId: null }];
+  const moved = movePromptToFolder(source, 'p1', { workspaceId: 'work', folderId: 'network' });
+  assert.equal(moved.length, 1);
+  assert.equal(moved[0].folderId, 'network');
+  assert.deepEqual(source, [{ id: 'p1', title: 'A', workspaceId: 'personal', folderId: null }]);
+
+  const removed = removePromptFromFolder(moved, 'p1');
+  assert.equal(removed.length, 1);
+  assert.equal(removed[0].folderId, null);
+  assert.equal(removed[0].id, 'p1');
 });
 
 test('reorderByIds preserves unmentioned items after explicit order', () => {
