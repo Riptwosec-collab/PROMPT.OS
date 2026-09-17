@@ -47,6 +47,7 @@ export default function HomePage() {
   const status = { mode: 'ready', revision: '—', pendingCount: 0, lastSyncedAt: null, version: 'V5 PREVIEW' };
   const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
   const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
+  const v5PromptDetailEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_DETAIL);
 
   if (!v5ShellEnabled) {
     return (
@@ -62,7 +63,7 @@ export default function HomePage() {
         <AppShell activePage={activePage} onNavigate={navigate} status={status}>
           {activePage === 'library' ? (
             v5SearchEnabled ? (
-              <PromptLibraryV5 />
+              <PromptLibraryV5 detailEnabled={v5PromptDetailEnabled} />
             ) : (
               <div className="v5-legacy-frame h-full">
                 <PromptOS />
