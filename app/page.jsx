@@ -48,6 +48,8 @@ export default function HomePage() {
   const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
   const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
   const v5PromptDetailEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_DETAIL);
+  const v5VariablesEnabled = Boolean(V5_FEATURE_FLAGS.V5_VARIABLES);
+  const v5PromptHealthEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_HEALTH);
   const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
   const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
 
@@ -67,6 +69,8 @@ export default function HomePage() {
             v5SearchEnabled ? (
               <PromptLibraryV5
                 detailEnabled={v5PromptDetailEnabled}
+                variablesEnabled={v5VariablesEnabled}
+                healthEnabled={v5PromptHealthEnabled}
                 workspaceEnabled={v5WorkspaceEnabled}
                 smartCollectionsEnabled={v5SmartCollectionsEnabled}
               />
