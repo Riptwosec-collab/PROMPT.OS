@@ -17,6 +17,15 @@ const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
   ),
 });
 
+const PromptLibraryV5 = dynamic(() => import('../components/prompt/PromptLibraryV5.jsx'), {
+  ssr: false,
+  loading: () => (
+    <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">
+      LOADING_LIBRARY_V5...
+    </main>
+  ),
+});
+
 function PlaceholderPanel({ activePage }) {
   const item = V5_NAV_ITEMS.find((entry) => entry.id === activePage);
   return (
@@ -37,6 +46,12 @@ export default function HomePage() {
   const navigate = (page) => setActivePage(normalizeV5Page(page));
   const status = { mode: 'ready', revision: '—', pendingCount: 0, lastSyncedAt: null, version: 'V5 PREVIEW' };
   const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
+  const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
+  const v5PromptDetailEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_DETAIL);
+  const v5VariablesEnabled = Boolean(V5_FEATURE_FLAGS.V5_VARIABLES);
+  const v5PromptHealthEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_HEALTH);
+  const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
+  const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
 
   if (!v5ShellEnabled) {
     return (
@@ -51,9 +66,19 @@ export default function HomePage() {
       <V5FeatureFlagProvider>
         <AppShell activePage={activePage} onNavigate={navigate} status={status}>
           {activePage === 'library' ? (
-            <div className="v5-legacy-frame h-full">
-              <PromptOS />
-            </div>
+            v5SearchEnabled ? (
+              <PromptLibraryV5
+                detailEnabled={v5PromptDetailEnabled}
+                variablesEnabled={v5VariablesEnabled}
+                healthEnabled={v5PromptHealthEnabled}
+                workspaceEnabled={v5WorkspaceEnabled}
+                smartCollectionsEnabled={v5SmartCollectionsEnabled}
+              />
+            ) : (
+              <div className="v5-legacy-frame h-full">
+                <PromptOS />
+              </div>
+            )
           ) : (
             <PlaceholderPanel activePage={activePage} />
           )}

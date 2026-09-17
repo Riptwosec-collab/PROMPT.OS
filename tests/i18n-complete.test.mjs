@@ -13,6 +13,18 @@ const V5_VISIBLE_LABELS = [
   'English', 'Thai', 'Multi-language',
 ];
 
+const V5_CORE_EXPERIENCE_LABELS = [
+  'Prompt Library', 'Search prompts', 'Favorites', 'Recent', 'Has Variables',
+  'Category', 'Difficulty', 'Source', 'All', 'Yes', 'No', 'Overview', 'Inputs', 'Preview',
+  'Prompt Variables', 'Required fields are marked with *.', 'Rendered Prompt', 'Prompt Health',
+  'LOCAL SCORE', 'Structure', 'Context', 'Variables', 'Constraints', 'Output Format', 'Reliability',
+  'Findings', 'No variables required', 'optional', 'Required',
+  'Execution is not enabled for this V5 preview yet.', 'Run Prompt', 'Improve', 'Copy', 'Favorite', 'Pin',
+  'Prompt Packs', 'Curated workflows', 'Open', 'Add all to Workspace', 'Workspace', 'All Prompts',
+  'Smart Collections', 'Pinned', 'Recently Used', 'Most Used', 'Recently Added', 'Folders',
+  'No folders yet', 'Continue Working', 'No matching prompts',
+];
+
 const INTENTIONALLY_PRESERVED_TECHNICAL_TOKENS = new Set([
   'API', 'REST', 'SQL', 'JSON', 'NLP', 'SEO',
 ]);
@@ -22,6 +34,11 @@ const hasThai = (value) => /[ก-๙]/.test(String(value || ''));
 test('all visible V5 shell labels have a Thai rendering', () => {
   const missing = V5_VISIBLE_LABELS.filter((text) => translateCatalogThai('th', text) === text);
   assert.deepEqual(missing, [], `Missing V5 Thai translations: ${missing.join(', ')}`);
+});
+
+test('all V5 core experience labels have a Thai rendering', () => {
+  const missing = V5_CORE_EXPERIENCE_LABELS.filter((text) => translateCatalogThai('th', text) === text);
+  assert.deepEqual(missing, [], `Missing V5 core Thai translations: ${missing.join(', ')}`);
 });
 
 test('dynamic V5 status text renders in Thai', () => {
