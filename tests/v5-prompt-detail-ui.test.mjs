@@ -41,3 +41,17 @@ test('Prompt Health is local and Prompt Library gates detail V2 with V5_PROMPT_D
   assert.match(library, /detailEnabled/);
   assert.match(page, /V5_PROMPT_DETAIL/);
 });
+
+test('Variables and Prompt Health keep independent granular feature gates', () => {
+  const page = read('app/page.jsx');
+  const library = read('components/prompt/PromptLibraryV5.jsx');
+  const detail = read('components/prompt/PromptDetailV2.jsx');
+  assert.match(page, /V5_VARIABLES/);
+  assert.match(page, /V5_PROMPT_HEALTH/);
+  assert.match(library, /variablesEnabled/);
+  assert.match(library, /healthEnabled/);
+  assert.match(detail, /variablesEnabled/);
+  assert.match(detail, /healthEnabled/);
+  assert.match(detail, /healthEnabled\s*&&/);
+  assert.match(detail, /variablesEnabled\s*\?/);
+});
