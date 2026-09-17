@@ -35,11 +35,11 @@ const prompts = [
   },
   {
     id: 'thai-hit',
-    name: 'THAI_NETWORK',
-    displayTitle: 'Thai Network Helper',
+    name: 'THAI_HELPER',
+    displayTitle: 'Localized Helper',
     displayTitleTh: 'แก้ปัญหาเครือข่าย',
     descriptionTh: 'ตรวจสอบอินเทอร์เน็ตและเครือข่าย',
-    category: 'Networking',
+    category: 'Support',
     difficulty: 'intermediate',
     sourceType: 'catalog',
     prompt: 'Analyze the supplied topology.',
@@ -76,7 +76,7 @@ test('search ranking is stable for equal scores', () => {
 test('search applies favorite, recent, category, difficulty, source and variable filters', () => {
   assert.deepEqual(searchPrompts(prompts, '', { favorite: true }).map((item) => item.id), ['title-hit']);
   assert.deepEqual(searchPrompts(prompts, '', { recent: true }).map((item) => item.id), ['title-hit', 'thai-hit']);
-  assert.deepEqual(searchPrompts(prompts, '', { category: 'Networking' }).map((item) => item.id), ['title-hit', 'thai-hit']);
+  assert.deepEqual(searchPrompts(prompts, '', { category: 'Networking' }).map((item) => item.id), ['title-hit']);
   assert.deepEqual(searchPrompts(prompts, '', { difficulty: 'advanced' }).map((item) => item.id), ['title-hit']);
   assert.deepEqual(searchPrompts(prompts, '', { source: 'user' }).map((item) => item.id), ['body-hit']);
   assert.deepEqual(searchPrompts(prompts, '', { hasVariables: true }).map((item) => item.id), ['title-hit']);
