@@ -1,32 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFeatureFlags, isFeatureEnabled } from '../lib/ui/feature-flags.mjs';
+import { readFeatureFlags, isFeatureEnabled, V5_FLAG_NAMES } from '../lib/ui/feature-flags.mjs';
 
-test('V5 flags default to false', () => {
-  assert.deepEqual(readFeatureFlags({}), {
-    V5_WORKSPACE: false,
-    V5_SYNC: false,
-    V5_EVALUATION: false,
-    V5_ANALYTICS: false,
-  });
+const EXPECTED_FLAGS = [
+  'V5_WORKSPACE', 'V5_SYNC', 'V5_EVALUATION', 'V5_ANALYTICS',
+  'V5_SEARCH', 'V5_PROMPT_DETAIL', 'V5_VARIABLES', 'V5_PROMPT_HEALTH',
+  'V5_SMART_COLLECTIONS', 'V5_EXECUTION_ENGINE', 'V5_AI_IMPROVE',
+  'V5_COST_GUARD', 'V5_PROVIDER_SELECTOR', 'V5_COMMAND_PALETTE',
+  'V5_CLOUD_SYNC', 'V5_USAGE_ANALYTICS', 'V5_WORKFLOW',
+];
+
+test('V5 flags default to false with the complete legacy and granular flag set', () => {
+  assert.deepEqual(V5_FLAG_NAMES, EXPECTED_FLAGS);
+  assert.deepEqual(readFeatureFlags({}), Object.fromEntries(EXPECTED_FLAGS.map((name) => [name, false])));
 });
 
 test('only explicit true values enable a flag', () => {
-  const flags = readFeatureFlags({ NEXT_PUBLIC_V5_SYNC: 'true' });
-  assert.equal(isFeatureEnabled(flags, 'V5_SYNC'), true);
+  const flags = readFeatureFlags({ NEXT_PUBLIC_V5_CLOUD_SYNC: 'true' });
+  assert.equal(isFeatureEnabled(flags, 'V5_CLOUD_SYNC'), true);
   assert.equal(isFeatureEnabled(flags, 'UNKNOWN'), false);
 });
 
-test('true is case-insensitive while other truthy strings stay disabled', () => {
+test('legacy flags remain supported while granular flags use the same parsing rules', () => {
   const flags = readFeatureFlags({
     NEXT_PUBLIC_V5_WORKSPACE: 'TRUE',
     NEXT_PUBLIC_V5_SYNC: '1',
     NEXT_PUBLIC_V5_EVALUATION: 'yes',
     NEXT_PUBLIC_V5_ANALYTICS: ' true ',
+    NEXT_PUBLIC_V5_SEARCH: ' true ',
   });
-
   assert.equal(flags.V5_WORKSPACE, true);
   assert.equal(flags.V5_SYNC, false);
   assert.equal(flags.V5_EVALUATION, false);
   assert.equal(flags.V5_ANALYTICS, true);
+  assert.equal(flags.V5_SEARCH, true);
 });

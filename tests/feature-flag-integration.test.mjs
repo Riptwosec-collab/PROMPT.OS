@@ -11,3 +11,9 @@ test('app boundary provides centralized V5 feature flags without direct env read
   assert.equal(/process\.env\.NEXT_PUBLIC_V5_/.test(pageSource), false);
   assert.equal(/process\.env\.NEXT_PUBLIC_V5_/.test(providerSource), false);
 });
+
+test('feature flag provider merges partial overrides over default-safe flags', () => {
+  const providerSource = fs.readFileSync('components/V5FeatureFlagProvider.jsx', 'utf8');
+  assert.match(providerSource, /\.\.\.V5_FEATURE_FLAGS/);
+  assert.match(providerSource, /\.\.\.flags/);
+});
