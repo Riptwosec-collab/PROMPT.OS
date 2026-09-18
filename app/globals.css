@@ -49,6 +49,11 @@ select {
   backdrop-filter: blur(18px);
 }
 
+.v5-glass {
+  background: var(--v5-glass);
+  border-color: var(--v5-line);
+}
+
 .v5-glass-subtle {
   background: var(--v5-glass-subtle);
   border-color: var(--v5-border-subtle);
@@ -57,8 +62,13 @@ select {
   box-shadow: var(--v5-shadow-low);
 }
 
-.v5-glass-panel,
-.v5-glass {
+.v5-glass-panel {
+  background: var(--v5-glass-panel);
+  border-color: var(--v5-border-panel);
+  box-shadow: var(--v5-shadow-medium);
+}
+
+.v5-visual-enabled .v5-glass {
   background: var(--v5-glass-panel);
   border-color: var(--v5-border-panel);
   box-shadow: var(--v5-shadow-medium);
