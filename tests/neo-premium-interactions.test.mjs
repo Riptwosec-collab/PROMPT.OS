@@ -62,3 +62,24 @@ test('prompt support surfaces reuse static Phase 1 glass primitives without deco
     assert.equal(/repeat\s*:\s*Infinity|setInterval\(|requestAnimationFrame\(/.test(source), false, `${path} must stay static`);
   }
 });
+
+test('final Phase 3 interaction policy stays bounded, progressive and reduced-motion safe', () => {
+  const card = fs.readFileSync(cardPath, 'utf8');
+  const detail = fs.readFileSync(detailPath, 'utf8');
+  const sheet = fs.readFileSync(sheetPath, 'utf8');
+  const phase3 = `${card}\n${detail}\n${sheet}`;
+
+  assert.match(card, /\(hover: hover\) and \(pointer: fine\)/);
+  assert.match(card, /reducedMotion/);
+  assert.match(card, /pointerType\s*===\s*['"]touch['"]/);
+  assert.match(card, /y:\s*-4/);
+  assert.match(card, /scale:\s*0\.985/);
+  assert.match(detail, /getPromptTransitionMode/);
+  assert.match(detail, /reducedMotion/);
+  assert.equal(/mode=["']wait["']/.test(detail), false);
+  assert.equal(/scanline|cursor-trail|particle-field|rotateX|rotateY|perspective/i.test(phase3), false);
+  assert.equal(/setState\(/.test(card), false);
+
+  const quickActions = card.match(/v5-card-quick-actions[\s\S]{0,2200}/)?.[0] || '';
+  for (const action of ['Run', 'Favorite', 'Pin']) assert.match(quickActions, new RegExp(action));
+});
