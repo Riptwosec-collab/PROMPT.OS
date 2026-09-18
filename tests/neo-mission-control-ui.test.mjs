@@ -27,11 +27,34 @@ test('mission control limits neo effects to intentional hero interactions', () =
   assert.equal(/repeat:\s*Infinity/.test(home), false);
 });
 
-test('neo css provides restrained spotlight depth and coarse-pointer fallback', () => {
+test('neo css provides restrained spotlight depth plus fine and coarse pointer policies', () => {
   const css = read('app/globals.css');
   assert.match(css, /--spotlight-x/);
   assert.match(css, /--spotlight-y/);
   assert.match(css, /radial-gradient/);
+  assert.match(css, /@media\s*\(hover:\s*hover\)\s*and\s*\(pointer:\s*fine\)/);
   assert.match(css, /@media\s*\(hover:\s*none\),\s*\(pointer:\s*coarse\)/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.v5-pointer-spotlight::before[\s\S]*opacity:\s*0/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*\.v5-magnetic-inner[\s\S]*transform:\s*none\s*!important/);
   assert.equal(/scanline|cursor-trail|particle-field/i.test(css), false);
+});
+
+test('new Phase 2 surfaces avoid heavy 3D and continuous decorative motion', () => {
+  const source = [
+    'components/home/MissionControl.jsx',
+    'components/command/CommandPaletteV5.jsx',
+    'components/shell/Sidebar.jsx',
+    'components/shell/MobileDock.jsx',
+    'components/shell/PageTransition.jsx',
+    'components/shell/CreateActionSheet.jsx',
+  ].map(read).join('\n');
+  assert.equal(/rotateX|rotateY|repeat:\s*Infinity|scanline|cursor-trail|particle-field/i.test(source), false);
+});
+
+test('mission control metrics render only from real enabled data paths', () => {
+  const home = read('components/home/MissionControl.jsx');
+  assert.match(home, /usageEnabled\s*&&\s*hasUsage/);
+  assert.match(home, /cloudStatus\s*\?/);
+  assert.match(home, /healthEnabled\s*\?/);
+  assert.equal(/fake|mock telemetry|demo tokens|demo cost/i.test(home), false);
 });
