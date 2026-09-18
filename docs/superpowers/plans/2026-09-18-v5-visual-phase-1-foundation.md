@@ -26,17 +26,17 @@
 ## File Structure
 
 **Create**
-- `lib/ui/visual-tokens.mjs` — semantic color/elevation/radius constants usable by tests and UI.
-- `lib/ui/motion-tokens.mjs` — canonical durations, spring configs, and reduced-motion transition helpers.
-- `lib/ui/interaction-config.mjs` — fine-pointer/reduced-motion capability policy; no DOM access in exported pure helpers.
-- `components/ui/GlassSurface.jsx` — semantic glass levels: subtle/panel/focus.
-- `components/ui/MotionSurface.jsx` — thin Motion wrapper using shared motion tokens.
-- `components/ui/AuroraBackground.jsx` — decorative ambient layer with visibility-aware pause and pointer CSS variables.
-- `components/ui/GlassGlyph.jsx` — reusable category/status glyph shell.
-- `components/ui/StatusPill.jsx` — semantic state capsule.
-- `components/ui/MetricChip.jsx` — mono technical metric surface.
-- `components/ui/GlowButton.jsx` — focus-visible/press-aware action primitive.
-- `components/ui/AnimatedNumber.jsx` — reduced-motion-safe number interpolation wrapper.
+- `lib/ui/visual-tokens.mjs`
+- `lib/ui/motion-tokens.mjs`
+- `lib/ui/interaction-config.mjs`
+- `components/ui/GlassSurface.jsx`
+- `components/ui/MotionSurface.jsx`
+- `components/ui/AuroraBackground.jsx`
+- `components/ui/GlassGlyph.jsx`
+- `components/ui/StatusPill.jsx`
+- `components/ui/MetricChip.jsx`
+- `components/ui/GlowButton.jsx`
+- `components/ui/AnimatedNumber.jsx`
 - `tests/visual-motion-foundation.test.mjs`
 - `tests/visual-motion-ui-contract.test.mjs`
 
@@ -49,14 +49,13 @@
 - `components/shell/AppShell.jsx`
 - `app/page.jsx`
 
-## Task 1: Add Rollout Flag and Motion Dependency
+## Task 1: Rollout Flag and Motion Dependency
 
 **Interfaces:**
-- `V5_FLAG_NAMES` includes `V5_VISUAL_SYSTEM`.
-- `readFeatureFlags(env)` reads `NEXT_PUBLIC_V5_VISUAL_SYSTEM` with the same strict parser as existing flags.
-- Dependency import contract is `import { motion, AnimatePresence, useReducedMotion } from 'motion/react'`.
+- Consumes: existing `readFeatureFlags`, `V5_FLAG_NAMES`, `V5_FEATURE_FLAGS`.
+- Produces: `V5_VISUAL_SYSTEM` and `motion/react` import availability.
 
-- [ ] **Step 1: Extend the feature-flag test first.** Add `V5_VISUAL_SYSTEM` to `EXPECTED_FLAGS` in `tests/feature-flags.test.mjs` and add:
+- [ ] **Step 1: Write the failing feature-flag test.** Add this case to `tests/feature-flags.test.mjs` and add `V5_VISUAL_SYSTEM` to `EXPECTED_FLAGS`:
 
 ```js
 test('visual system flag is default-off and only explicit true enables it', () => {
@@ -66,23 +65,60 @@ test('visual system flag is default-off and only explicit true enables it', () =
 });
 ```
 
-- [ ] **Step 2: Run RED.** Run `node --test tests/feature-flags.test.mjs`. Expected: failure because `V5_VISUAL_SYSTEM` is absent.
-- [ ] **Step 3: Add the flag.** Append `V5_VISUAL_SYSTEM` to `V5_FLAG_NAMES` and map `NEXT_PUBLIC_V5_VISUAL_SYSTEM` in `V5_FEATURE_FLAGS` inside `lib/ui/feature-flags.mjs`.
-- [ ] **Step 4: Verify GREEN.** Re-run `node --test tests/feature-flags.test.mjs`.
-- [ ] **Step 5: Verify Motion compatibility before install.** Confirm the official Motion installation guide still supports React >=18.2 and Next App Router. If that check fails, stop this phase and revise the design; do not substitute another library silently.
-- [ ] **Step 6: Install and pin through the lockfile.** Run `npm install motion`. Confirm `package.json` contains a `motion` dependency and `package-lock.json` records the resolved version.
-- [ ] **Step 7: Smoke-import Motion.** Run `node -e "import('motion/react').then(m=>{if(!m.motion||!m.AnimatePresence)process.exit(1)})"`. Expected: exit code 0.
-- [ ] **Step 8: Commit.** `git add package.json package-lock.json lib/ui/feature-flags.mjs tests/feature-flags.test.mjs && git commit -m "feat: add visual system rollout foundation"`.
+- [ ] **Step 2: Run the test and confirm RED.**
 
-## Task 2: Create Pure Visual and Motion Tokens
+```bash
+node --test tests/feature-flags.test.mjs
+```
+
+Expected: the exact flag-list assertion fails because `V5_VISUAL_SYSTEM` does not exist yet.
+
+- [ ] **Step 3: Add the flag using the existing parser.** In `lib/ui/feature-flags.mjs`, add the name and environment mapping in the same structures used by the other granular flags:
+
+```js
+'V5_VISUAL_SYSTEM',
+```
+
+```js
+V5_VISUAL_SYSTEM: parseBoolean(env.NEXT_PUBLIC_V5_VISUAL_SYSTEM),
+```
+
+Do not add a second parser or direct `process.env` read in `app/page.jsx`.
+
+- [ ] **Step 4: Re-run the flag test and confirm GREEN.**
+
+```bash
+node --test tests/feature-flags.test.mjs
+```
+
+Expected: PASS.
+
+- [ ] **Step 5: Re-check Motion compatibility before installation.** Verify the official Motion React installation/upgrade documentation still states support compatible with React 19.3.0 and Next App Router. If that is no longer true, stop the phase and revise the approved design rather than substituting another library.
+
+- [ ] **Step 6: Install Motion and pin it through the lockfile.**
+
+```bash
+npm install motion
+node -e "import('motion/react').then(m=>{if(!m.motion||!m.AnimatePresence||!m.useReducedMotion)process.exit(1)})"
+```
+
+Expected: install succeeds and smoke import exits 0.
+
+- [ ] **Step 7: Commit.**
+
+```bash
+git add package.json package-lock.json lib/ui/feature-flags.mjs tests/feature-flags.test.mjs
+git commit -m "feat: add visual system rollout foundation"
+```
+
+## Task 2: Visual, Motion, and Interaction Tokens
 
 **Interfaces:**
-- `VISUAL_TOKENS` is a frozen object with `color`, `glass`, `radius`, `shadow`, and `focus` groups.
-- `MOTION_TOKENS` is a frozen object with numeric millisecond durations `instant=120`, `fast=180`, `standard=280`, `springMin=350`, `springMax=500`, plus `ambientMin=8000`, `ambientMax=20000`.
-- `getTransition(kind, reducedMotion=false)` returns a Motion transition object; reduced motion returns `{ duration: 0.01 }`.
-- `getInteractionPolicy({ reducedMotion, finePointer, documentVisible })` returns `{ ambient, pointerGlow, spatialMotion }` booleans.
+- Produces `VISUAL_TOKENS`.
+- Produces `MOTION_TOKENS` and `getTransition(kind, reducedMotion=false)`.
+- Produces `getInteractionPolicy({ reducedMotion, finePointer, documentVisible })`.
 
-- [ ] **Step 1: Write the failing unit test** `tests/visual-motion-foundation.test.mjs`:
+- [ ] **Step 1: Write the failing unit tests.** Create `tests/visual-motion-foundation.test.mjs`:
 
 ```js
 import test from 'node:test';
@@ -101,54 +137,289 @@ test('approved visual and motion tokens are centralized', () => {
   assert.equal(getTransition('standard', true).duration, 0.01);
 });
 
-test('interaction policy disables ambient and pointer motion when reduced motion is requested', () => {
+test('interaction policy disables motion under reduced-motion preference', () => {
   assert.deepEqual(
     getInteractionPolicy({ reducedMotion: true, finePointer: true, documentVisible: true }),
     { ambient: false, pointerGlow: false, spatialMotion: false },
   );
 });
+
+test('fine pointer and visible document enable progressive effects when motion is allowed', () => {
+  assert.deepEqual(
+    getInteractionPolicy({ reducedMotion: false, finePointer: true, documentVisible: true }),
+    { ambient: true, pointerGlow: true, spatialMotion: true },
+  );
+});
 ```
 
-- [ ] **Step 2: Run RED.** `node --test tests/visual-motion-foundation.test.mjs`; expected module-not-found failure.
-- [ ] **Step 3: Implement `lib/ui/visual-tokens.mjs`.** Export a deeply stable/frozen semantic object; keep raw values here rather than duplicating them in React components.
-- [ ] **Step 4: Implement `lib/ui/motion-tokens.mjs`.** Use spring config `{ type: 'spring', stiffness: 360, damping: 32, mass: 0.9 }` for `getTransition('spring')`, seconds converted from millisecond tokens for tween durations, and the 0.01-second reduced-motion fallback.
-- [ ] **Step 5: Implement `lib/ui/interaction-config.mjs`.** Ambient is true only when visible and not reduced-motion; pointerGlow additionally requires fine pointer; spatialMotion is false only for reduced-motion.
-- [ ] **Step 6: Run GREEN.** `node --test tests/visual-motion-foundation.test.mjs`.
-- [ ] **Step 7: Commit.** `git add lib/ui/visual-tokens.mjs lib/ui/motion-tokens.mjs lib/ui/interaction-config.mjs tests/visual-motion-foundation.test.mjs && git commit -m "feat: add visual and motion tokens"`.
+- [ ] **Step 2: Run and confirm RED.**
 
-## Task 3: Build Reusable UI Primitives and Aurora CSS
+```bash
+node --test tests/visual-motion-foundation.test.mjs
+```
+
+Expected: module-not-found error for the new token modules.
+
+- [ ] **Step 3: Implement `lib/ui/visual-tokens.mjs`.**
+
+```js
+export const VISUAL_TOKENS = Object.freeze({
+  color: Object.freeze({
+    background: '#02040A',
+    iceBlue: '#8BE9FF',
+    electricPurple: '#A78BFA',
+    success: '#34D399',
+    warning: '#FBBF24',
+    danger: '#F87171',
+  }),
+  glass: Object.freeze({
+    subtle: 'rgba(8, 15, 29, 0.48)',
+    panel: 'rgba(8, 15, 29, 0.68)',
+    focus: 'rgba(10, 18, 34, 0.82)',
+  }),
+  radius: Object.freeze({ sm: 12, md: 18, lg: 24, xl: 32 }),
+  shadow: Object.freeze({
+    low: '0 12px 40px rgba(0,0,0,.18)',
+    medium: '0 20px 60px rgba(0,0,0,.26)',
+    high: '0 30px 90px rgba(0,0,0,.34)',
+  }),
+  focus: Object.freeze({ ring: '0 0 0 3px rgba(139,233,255,.28)' }),
+});
+```
+
+- [ ] **Step 4: Implement `lib/ui/motion-tokens.mjs`.**
+
+```js
+export const MOTION_TOKENS = Object.freeze({
+  instant: 120,
+  fast: 180,
+  standard: 280,
+  springMin: 350,
+  springMax: 500,
+  ambientMin: 8000,
+  ambientMax: 20000,
+});
+
+const TWEEN_MS = Object.freeze({
+  instant: MOTION_TOKENS.instant,
+  fast: MOTION_TOKENS.fast,
+  standard: MOTION_TOKENS.standard,
+});
+
+export function getTransition(kind = 'standard', reducedMotion = false) {
+  if (reducedMotion) return { duration: 0.01 };
+  if (kind === 'spring') {
+    return { type: 'spring', stiffness: 360, damping: 32, mass: 0.9 };
+  }
+  const ms = TWEEN_MS[kind] ?? MOTION_TOKENS.standard;
+  return { type: 'tween', duration: ms / 1000, ease: [0.22, 1, 0.36, 1] };
+}
+```
+
+- [ ] **Step 5: Implement `lib/ui/interaction-config.mjs`.**
+
+```js
+export function getInteractionPolicy({
+  reducedMotion = false,
+  finePointer = false,
+  documentVisible = true,
+} = {}) {
+  return {
+    ambient: !reducedMotion && documentVisible,
+    pointerGlow: !reducedMotion && documentVisible && finePointer,
+    spatialMotion: !reducedMotion,
+  };
+}
+```
+
+- [ ] **Step 6: Run and confirm GREEN.**
+
+```bash
+node --test tests/visual-motion-foundation.test.mjs
+```
+
+Expected: PASS.
+
+- [ ] **Step 7: Commit.**
+
+```bash
+git add lib/ui/visual-tokens.mjs lib/ui/motion-tokens.mjs lib/ui/interaction-config.mjs tests/visual-motion-foundation.test.mjs
+git commit -m "feat: add visual and motion tokens"
+```
+
+## Task 3: Reusable UI Primitives and Aurora CSS
 
 **Interfaces:**
-- `<GlassSurface level="subtle|panel|focus" as="div" className="">children</GlassSurface>`.
-- `<MotionSurface transitionKind="standard|spring" reducedMotion={boolean}>` forwards normal DOM props and Motion props.
-- `<AuroraBackground />` is `aria-hidden="true"` and never captures pointer events.
-- `StatusPill` takes `{ tone='neutral', label, children }`.
-- `MetricChip` takes `{ label, value, suffix }`.
-- `GlowButton` passes through standard button props and has visible `:focus-visible` treatment.
-- `AnimatedNumber` takes `{ value, format=(v)=>String(v), reducedMotion }` and renders final value immediately when reduced-motion is true.
+- `<GlassSurface level="subtle|panel|focus" as="div">`.
+- `<MotionSurface transitionKind="standard|spring" reducedMotion={boolean}>`.
+- `<AuroraBackground />` decorative only.
+- `<GlassGlyph>`, `<StatusPill>`, `<MetricChip>`, `<GlowButton>`, `<AnimatedNumber>`.
 
-- [ ] **Step 1: Write a source-contract RED test** `tests/visual-motion-ui-contract.test.mjs` that reads the component files and asserts `glass-subtle`, `glass-panel`, `glass-focus`, `aria-hidden`, `motion/react`, and `focus-visible` are present. It must also assert `AuroraBackground.jsx` does not contain `setState` in its pointer-move handler path.
-- [ ] **Step 2: Run RED.** `node --test tests/visual-motion-ui-contract.test.mjs`; expected missing-file failures.
-- [ ] **Step 3: Add CSS token mappings** to `app/globals.css`: define `--v5-ice-blue`, `--v5-electric-purple`, three glass backgrounds/borders, elevation shadows, focus halo, `.v5-glass-subtle`, `.v5-glass-panel`, `.v5-glass-focus`, `.v5-aurora`, and `.v5-pointer-light`. Keep the existing `.v5-glass` class as a backward-compatible alias to panel glass.
-- [ ] **Step 4: Add Aurora keyframes.** Animate only `transform`/`opacity` of pseudo/child layers over 12s and 18s cycles. Inside `prefers-reduced-motion: reduce`, set aurora animation to none and preserve the current global reduced-motion override.
-- [ ] **Step 5: Implement the UI primitives** in `components/ui/`. `AuroraBackground` uses `useReducedMotion`, `matchMedia('(hover: hover) and (pointer: fine)')`, `document.visibilityState`, `requestAnimationFrame`, and CSS variables `--pointer-x` / `--pointer-y`; pointer changes write styles directly to the element ref rather than React state.
-- [ ] **Step 6: Run GREEN.** `node --test tests/visual-motion-ui-contract.test.mjs tests/visual-motion-foundation.test.mjs`.
-- [ ] **Step 7: Commit.** `git add app/globals.css components/ui tests/visual-motion-ui-contract.test.mjs && git commit -m "feat: add premium visual primitives"`.
+- [ ] **Step 1: Write the failing source-contract test.** Create `tests/visual-motion-ui-contract.test.mjs`:
+
+```js
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const read = (path) => fs.readFileSync(path, 'utf8');
+
+test('visual primitives expose approved glass and motion contracts', () => {
+  const glass = read('components/ui/GlassSurface.jsx');
+  const motion = read('components/ui/MotionSurface.jsx');
+  const aurora = read('components/ui/AuroraBackground.jsx');
+  const button = read('components/ui/GlowButton.jsx');
+  assert.match(glass, /glass-subtle/);
+  assert.match(glass, /glass-panel/);
+  assert.match(glass, /glass-focus/);
+  assert.match(motion, /motion\/react/);
+  assert.match(aurora, /aria-hidden/);
+  assert.match(aurora, /requestAnimationFrame/);
+  assert.equal(/setState\(/.test(aurora), false);
+  assert.match(button, /focus-visible/);
+});
+```
+
+- [ ] **Step 2: Run and confirm RED.**
+
+```bash
+node --test tests/visual-motion-ui-contract.test.mjs
+```
+
+Expected: missing-file failure.
+
+- [ ] **Step 3: Add the visual CSS primitives to `app/globals.css`.** Preserve existing selectors and add these semantic variables/classes:
+
+```css
+:root {
+  --v5-ice-blue: #8be9ff;
+  --v5-electric-purple: #a78bfa;
+  --v5-glass-subtle: rgba(8, 15, 29, 0.48);
+  --v5-glass-panel: rgba(8, 15, 29, 0.68);
+  --v5-glass-focus: rgba(10, 18, 34, 0.82);
+  --v5-border-subtle: rgba(139, 233, 255, 0.12);
+  --v5-border-panel: rgba(139, 233, 255, 0.18);
+  --v5-border-focus: rgba(139, 233, 255, 0.30);
+  --v5-focus-ring: 0 0 0 3px rgba(139, 233, 255, 0.28);
+}
+
+.v5-glass-subtle { background: var(--v5-glass-subtle); backdrop-filter: blur(12px); }
+.v5-glass-panel { background: var(--v5-glass-panel); backdrop-filter: blur(18px); }
+.v5-glass-focus { background: var(--v5-glass-focus); backdrop-filter: blur(22px); }
+.v5-glass { background: var(--v5-glass-panel); backdrop-filter: blur(18px); }
+
+.v5-aurora { position: fixed; inset: -12%; pointer-events: none; overflow: hidden; }
+.v5-aurora::before,
+.v5-aurora::after { content: ''; position: absolute; inset: 0; will-change: transform, opacity; }
+.v5-aurora::before {
+  background: radial-gradient(circle at 22% 24%, rgba(139,233,255,.15), transparent 34%);
+  animation: v5-aurora-a 12s ease-in-out infinite alternate;
+}
+.v5-aurora::after {
+  background: radial-gradient(circle at 78% 16%, rgba(167,139,250,.16), transparent 32%);
+  animation: v5-aurora-b 18s ease-in-out infinite alternate;
+}
+@keyframes v5-aurora-a { to { transform: translate3d(3%, -2%, 0) scale(1.05); opacity: .82; } }
+@keyframes v5-aurora-b { to { transform: translate3d(-3%, 3%, 0) scale(1.06); opacity: .78; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .v5-aurora::before, .v5-aurora::after { animation: none !important; }
+}
+```
+
+- [ ] **Step 4: Implement the focused primitives.** Use these exact boundaries rather than embedding feature behavior:
+
+```jsx
+// components/ui/GlassSurface.jsx
+import React from 'react';
+const LEVEL_CLASS = { subtle: 'v5-glass-subtle', panel: 'v5-glass-panel', focus: 'v5-glass-focus' };
+export default function GlassSurface({ as: Tag = 'div', level = 'panel', className = '', children, ...props }) {
+  return <Tag className={`${LEVEL_CLASS[level] || LEVEL_CLASS.panel} ${className}`} {...props}>{children}</Tag>;
+}
+```
+
+```jsx
+// components/ui/MotionSurface.jsx
+'use client';
+import React from 'react';
+import { motion } from 'motion/react';
+import { getTransition } from '../../lib/ui/motion-tokens.mjs';
+export default function MotionSurface({ transitionKind = 'standard', reducedMotion = false, transition, ...props }) {
+  return <motion.div transition={transition || getTransition(transitionKind, reducedMotion)} {...props} />;
+}
+```
+
+```jsx
+// components/ui/GlowButton.jsx
+'use client';
+import React from 'react';
+export default function GlowButton({ className = '', ...props }) {
+  return <button className={`rounded-xl border border-white/10 focus-visible:outline-none focus-visible:shadow-[var(--v5-focus-ring)] ${className}`} {...props} />;
+}
+```
+
+Implement `GlassGlyph`, `StatusPill`, and `MetricChip` as presentational wrappers with no storage/network logic. `AnimatedNumber` must immediately render `format(value)` when `reducedMotion` is true and may tween numeric display only when motion is allowed.
+
+- [ ] **Step 5: Implement `AuroraBackground.jsx` without pointer state.**
+
+```jsx
+'use client';
+import React, { useEffect, useRef } from 'react';
+import { useReducedMotion } from 'motion/react';
+
+export default function AuroraBackground() {
+  const ref = useRef(null);
+  const reducedMotion = useReducedMotion();
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || reducedMotion) return undefined;
+    const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
+    let frame = 0;
+    const move = (event) => {
+      if (!fine.matches || document.visibilityState !== 'visible') return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        node.style.setProperty('--pointer-x', `${event.clientX}px`);
+        node.style.setProperty('--pointer-y', `${event.clientY}px`);
+      });
+    };
+    window.addEventListener('pointermove', move, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('pointermove', move);
+    };
+  }, [reducedMotion]);
+  return <div ref={ref} className="v5-aurora" aria-hidden="true" />;
+}
+```
+
+- [ ] **Step 6: Run targeted tests and confirm GREEN.**
+
+```bash
+node --test tests/visual-motion-ui-contract.test.mjs tests/visual-motion-foundation.test.mjs
+```
+
+Expected: PASS.
+
+- [ ] **Step 7: Commit.**
+
+```bash
+git add app/globals.css components/ui tests/visual-motion-ui-contract.test.mjs
+git commit -m "feat: add premium visual primitives"
+```
 
 ## Task 4: Gate the New Foundation in AppShell
 
 **Interfaces:**
-- `AppShell` gains optional prop `visualSystemEnabled=false`.
-- When false, existing `.v5-ambient` behavior remains.
-- When true, shell renders `<AuroraBackground />` and may wrap shell chrome in new primitives without altering navigation/data behavior.
-- `app/page.jsx` reads `V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM` and passes the boolean to `AppShell`.
+- `AppShell({ visualSystemEnabled=false, ...existingProps })`.
+- `app/page.jsx` reads the centralized flag only.
 
-- [ ] **Step 1: Extend `tests/visual-motion-ui-contract.test.mjs`**:
+- [ ] **Step 1: Add the failing gate contract.** Append to `tests/visual-motion-ui-contract.test.mjs`:
 
 ```js
 test('visual system is separately gated and legacy shell path remains', () => {
-  const page = fs.readFileSync('app/page.jsx', 'utf8');
-  const shell = fs.readFileSync('components/shell/AppShell.jsx', 'utf8');
+  const page = read('app/page.jsx');
+  const shell = read('components/shell/AppShell.jsx');
   assert.match(page, /V5_VISUAL_SYSTEM/);
   assert.match(page, /visualSystemEnabled=/);
   assert.match(shell, /visualSystemEnabled = false/);
@@ -157,19 +428,120 @@ test('visual system is separately gated and legacy shell path remains', () => {
 });
 ```
 
-- [ ] **Step 2: Run RED.** `node --test tests/visual-motion-ui-contract.test.mjs`.
-- [ ] **Step 3: Modify `AppShell.jsx`.** Import `AuroraBackground`; conditionally render it when enabled and otherwise render the current ambient `<div>`. Do not change child routing, Sidebar, TopBar, StatusHud, or MobileDock behavior in this task.
-- [ ] **Step 4: Modify `app/page.jsx`.** Define `const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);` and pass `visualSystemEnabled={v5VisualSystemEnabled}`.
-- [ ] **Step 5: Run targeted GREEN.** `node --test tests/visual-motion-ui-contract.test.mjs tests/feature-flags.test.mjs tests/feature-flag-integration.test.mjs`.
-- [ ] **Step 6: Commit.** `git add app/page.jsx components/shell/AppShell.jsx tests/visual-motion-ui-contract.test.mjs && git commit -m "feat: gate premium visual foundation"`.
+- [ ] **Step 2: Run and confirm RED.**
+
+```bash
+node --test tests/visual-motion-ui-contract.test.mjs
+```
+
+Expected: gate contract fails.
+
+- [ ] **Step 3: Update `AppShell.jsx` with a reversible background boundary.** Preserve existing Sidebar/TopBar/StatusHud/MobileDock wiring and replace only the ambient line with:
+
+```jsx
+export default function AppShell({
+  activePage,
+  onNavigate,
+  status,
+  children,
+  onOpenCommand,
+  onNewPrompt,
+  visualSystemEnabled = false,
+}) {
+  return (
+    <div className="v5-shell min-h-screen bg-[var(--v5-bg)] text-slate-200 overflow-hidden relative">
+      {visualSystemEnabled
+        ? <AuroraBackground />
+        : <div className="v5-ambient pointer-events-none fixed inset-0" aria-hidden="true" />}
+      {/* keep the existing shell body unchanged */}
+    </div>
+  );
+}
+```
+
+When applying this edit, retain the current full shell body instead of the explanatory comment shown in the snippet.
+
+- [ ] **Step 4: Wire the centralized flag from `app/page.jsx`.** Add alongside the existing V5 booleans:
+
+```jsx
+const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);
+```
+
+Pass it to the existing AppShell instance:
+
+```jsx
+<AppShell
+  activePage={activePage}
+  onNavigate={navigate}
+  status={status}
+  onOpenCommand={openCommand}
+  onNewPrompt={newPrompt}
+  visualSystemEnabled={v5VisualSystemEnabled}
+>
+  {pageContent}
+</AppShell>
+```
+
+Use the actual existing callback names in the file; do not create new callbacks merely to match this illustrative prop ordering.
+
+- [ ] **Step 5: Run targeted regressions.**
+
+```bash
+node --test tests/visual-motion-ui-contract.test.mjs tests/feature-flags.test.mjs tests/feature-flag-integration.test.mjs
+```
+
+Expected: PASS.
+
+- [ ] **Step 6: Commit.**
+
+```bash
+git add app/page.jsx components/shell/AppShell.jsx tests/visual-motion-ui-contract.test.mjs
+git commit -m "feat: gate premium visual foundation"
+```
 
 ## Task 5: Phase Verification and PR Gate
 
-- [ ] **Step 1: Run all tests.** `npm test`. Expected: all tests pass; prompt catalog regression remains exactly 80.
-- [ ] **Step 2: Run production build.** `npm run build`. Expected: Next/OpenNext build completes and `.open-next/worker.js` exists.
-- [ ] **Step 3: Verify OpenNext artifacts.** `test -f .open-next/worker.js && test -d .open-next/assets && test -f .open-next/.build/open-next.config.edge.mjs`.
-- [ ] **Step 4: Run Cloudflare dry-run.** `npx wrangler deploy --dry-run --outdir .wrangler-dry-run`. Expected: successful bundle processing and dry-run exit.
-- [ ] **Step 5: Verify the default-off path.** Run the feature-flag tests and inspect `app/page.jsx` to confirm no direct env reads and no visual-system activation without `NEXT_PUBLIC_V5_VISUAL_SYSTEM=true`.
-- [ ] **Step 6: Verify no forbidden scope.** Run `git diff --name-only "$(git merge-base main HEAD)"...HEAD`; the changed-file list must contain no Supabase migration, provider adapter, prompt catalog content, or deployment-secret changes.
-- [ ] **Step 7: Commit verification-only changes if any tests/docs changed.** Use `git commit -m "test: verify visual motion foundation"` only when there are tracked verification edits.
-- [ ] **Step 8: Open a Phase 1 PR and stop before merge.** The PR body must record exact test count, build result, Wrangler dry-run result, feature flag default state, and that no production deploy or DB DDL occurred. Merge requires a separate explicit `merge` authorization.
+- [ ] **Step 1: Run the full suite.**
+
+```bash
+npm test
+```
+
+Expected: all tests pass and the existing catalog regression still reports exactly 80 built-in prompts.
+
+- [ ] **Step 2: Build for Cloudflare/OpenNext.**
+
+```bash
+npm run build
+```
+
+Expected: successful Next/OpenNext build.
+
+- [ ] **Step 3: Verify required artifacts.**
+
+```bash
+test -f .open-next/worker.js
+test -d .open-next/assets
+test -f .open-next/.build/open-next.config.edge.mjs
+```
+
+Expected: all commands exit 0.
+
+- [ ] **Step 4: Run Wrangler dry-run only.**
+
+```bash
+rm -rf .wrangler-dry-run
+npx wrangler deploy --dry-run --outdir .wrangler-dry-run
+```
+
+Expected: bundle processes successfully and Wrangler exits without deployment.
+
+- [ ] **Step 5: Audit changed-file scope.**
+
+```bash
+git diff --name-only "$(git merge-base main HEAD)"...HEAD
+```
+
+Expected: approved docs plus Phase 1 UI/token/test/dependency files only; no Supabase migration, provider adapter, prompt catalog content, secret, or production-deployment changes.
+
+- [ ] **Step 6: Open the Phase 1 PR and stop.** PR body must include current head SHA, exact test count, build result, artifact result, Wrangler dry-run result, `V5_VISUAL_SYSTEM` default-off state, and explicit notes that no production deploy or DB DDL occurred. Do not merge until the user separately types `merge`.
