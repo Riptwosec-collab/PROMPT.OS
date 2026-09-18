@@ -16,6 +16,8 @@ import { buildDefaultPacks } from '../../lib/prompts/default-packs.mjs';
 import { normalizeWorkspaceState } from '../../lib/workspace/model.mjs';
 import { searchPrompts } from '../../lib/search/prompt-search.mjs';
 
+const STORAGE_KEY = 'promptVaultData';
+
 function browserStorage() {
   return typeof window === 'undefined' ? null : window.localStorage;
 }
@@ -53,7 +55,7 @@ export default function PromptLibraryV5({
   }));
 
   useEffect(() => {
-    const { prompts: loadedPrompts, database } = loadPromptCatalogState(browserStorage(), AI_PROMPT_LIBRARY);
+    const { prompts: loadedPrompts, database } = loadPromptCatalogState(browserStorage(), AI_PROMPT_LIBRARY, STORAGE_KEY);
     setPrompts(loadedPrompts);
     setOrganization(loadOrganization(loadedPrompts, database));
   }, []);
@@ -95,7 +97,7 @@ export default function PromptLibraryV5({
   const patchPrompt = (id, patch) => {
     setPrompts((current) => {
       const next = current.map((prompt) => String(prompt.id) === String(id) ? { ...prompt, ...patch, updatedAt: new Date().toISOString() } : prompt);
-      persistPromptCatalogState(browserStorage(), next);
+      persistPromptCatalogState(browserStorage(), next, null, STORAGE_KEY);
       return next;
     });
   };
@@ -104,7 +106,7 @@ export default function PromptLibraryV5({
     const ids = new Set((promptIds || []).map(String));
     setPrompts((current) => {
       const next = current.map((prompt) => ids.has(String(prompt.id)) ? { ...prompt, workspaceId: workspace?.id || 'personal' } : prompt);
-      persistPromptCatalogState(browserStorage(), next);
+      persistPromptCatalogState(browserStorage(), next, null, STORAGE_KEY);
       return next;
     });
   };
