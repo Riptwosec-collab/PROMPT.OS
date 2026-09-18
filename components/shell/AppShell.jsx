@@ -59,7 +59,7 @@ export default function AppShell({
               {children}
             </PageTransition>
           </main>
-          <StatusHud status={status} />
+          {status ? <StatusHud status={status} /> : null}
         </div>
       </div>
       <MobileDock
