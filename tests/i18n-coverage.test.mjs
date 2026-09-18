@@ -40,6 +40,11 @@ const V5_PHASE2_UI_TEXT = [
   'Esc to close', 'Notifications',
 ];
 
+const V5_PHASE3_UI_TEXT = [
+  'Health', 'Variables', 'Run', 'Favorite', 'Unfavorite', 'Pin', 'Unpin',
+  'Add to pack', 'Quick actions', 'Close', 'Open details', 'No matching prompts',
+];
+
 test('all known user-facing Prompt.OS labels have a Thai rendering', () => {
   const missing = REQUIRED_UI_TEXT.filter((text) => translate('th', text) === text);
   assert.deepEqual(missing, [], `Missing Thai translations: ${missing.join(', ')}`);
@@ -76,6 +81,20 @@ test('Phase 2 Mission Control, command and create surfaces have Thai rendering',
   ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
   for (const label of ['Neo Mission Control', 'AI Usage Pulse', 'Featured Prompt Packs', 'No matching commands', 'New Workflow', 'Dismiss']) {
     assert.match(files, new RegExp(label));
+  }
+});
+
+test('Phase 3 premium prompt actions and metadata have Thai rendering', () => {
+  const missing = V5_PHASE3_UI_TEXT.filter((text) => translateCatalogThai('th', text) === text);
+  assert.deepEqual(missing, [], `Missing V5 Phase 3 translations: ${missing.join(', ')}`);
+
+  const files = [
+    'components/prompt/PromptCardV5.jsx',
+    'components/prompt/PromptQuickActionsSheet.jsx',
+    'components/prompt/PromptLibraryV5.jsx',
+  ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
+  for (const label of ['Health', 'Run', 'Favorite', 'Pin', 'Add to pack', 'Quick actions', 'Close', 'Open details']) {
+    assert.match(files, new RegExp(label, 'i'));
   }
 });
 
