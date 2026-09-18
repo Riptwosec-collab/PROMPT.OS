@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import MotionSurface from '../ui/MotionSurface.jsx';
 import GlassGlyph from '../ui/GlassGlyph.jsx';
 import PromptQuickActionsSheet from './PromptQuickActionsSheet.jsx';
-import { promptLayoutId } from '../../lib/ui/prompt-transition.mjs';
+import {
+  promptGlyphLayoutId,
+  promptLayoutId,
+  promptTitleLayoutId,
+} from '../../lib/ui/prompt-transition.mjs';
 
 const FINE_POINTER_QUERY = '(hover: hover) and (pointer: fine)';
 const COARSE_POINTER_QUERY = '(pointer: coarse)';
@@ -143,7 +147,7 @@ export default function PromptCardV5({
       return;
     }
     if (event.target.closest?.('button, a, input, select, textarea')) return;
-    onOpen?.(prompt?.id);
+    onOpen?.(prompt?.id, cardRef.current);
   };
 
   const closeQuickActions = () => {
@@ -155,13 +159,16 @@ export default function PromptCardV5({
   const description = prompt?.descriptionTh || prompt?.description || 'No description';
   const favorite = Boolean(prompt?.favorite);
   const pinned = Boolean(prompt?.pinned);
+  const surfaceLayoutId = transitionEnabled ? promptLayoutId(prompt?.id) : undefined;
+  const titleLayoutId = transitionEnabled ? promptTitleLayoutId(prompt?.id) : undefined;
+  const glyphLayoutId = transitionEnabled ? promptGlyphLayoutId(prompt?.id) : undefined;
 
   return (
     <>
       <MotionSurface
         ref={cardRef}
         layout
-        layoutId={transitionEnabled ? promptLayoutId(prompt?.id) : undefined}
+        layoutId={surfaceLayoutId}
         whileHover={reducedMotion ? undefined : { y: -4 }}
         whileTap={reducedMotion ? undefined : { scale: 0.985 }}
         onPointerDown={handlePointerDown}
@@ -178,12 +185,14 @@ export default function PromptCardV5({
         data-prompt-id={prompt?.id}
       >
         <div className="flex items-start gap-3">
-          <GlassGlyph className="mt-0.5">⌘</GlassGlyph>
+          <motion.span layoutId={glyphLayoutId} className="mt-0.5 inline-flex shrink-0">
+            <GlassGlyph>⌘</GlassGlyph>
+          </motion.span>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-cyan-200/55">{prompt?.category || 'Prompt'}</p>
-                <h2 className="mt-1 truncate text-base font-semibold text-white">{title}</h2>
+                <motion.h2 layoutId={titleLayoutId} className="mt-1 truncate text-base font-semibold text-white">{title}</motion.h2>
                 {prompt?.displayTitleTh && prompt.displayTitleTh !== title ? (
                   <p className="mt-1 truncate text-xs text-cyan-100/60">{prompt.displayTitleTh}</p>
                 ) : null}
@@ -209,7 +218,7 @@ export default function PromptCardV5({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onOpen?.(prompt?.id);
+              onOpen?.(prompt?.id, cardRef.current);
             }}
             className="min-h-9 flex-1 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] px-3 text-xs font-medium text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-300/[0.11] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/40"
           >
