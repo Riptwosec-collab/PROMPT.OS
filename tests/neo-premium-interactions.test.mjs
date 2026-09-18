@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const cardPath = 'components/prompt/PromptCardV5.jsx';
 const sheetPath = 'components/prompt/PromptQuickActionsSheet.jsx';
+const detailPath = 'components/prompt/PromptDetailV2.jsx';
 
 test('neo card pointer light is bounded and does not tilt', () => {
   assert.equal(fs.existsSync(cardPath), true, 'PromptCardV5 must exist');
@@ -36,4 +37,15 @@ test('mobile quick action surface avoids destructive gestures and supports reduc
   assert.match(sheet, /useReducedMotion/);
   assert.match(sheet, /onClose/);
   assert.equal(/swipe|drag|Delete|Trash/i.test(sheet), false);
+});
+
+test('shared detail transition uses restrained shared identities with fade fallback', () => {
+  const detail = fs.readFileSync(detailPath, 'utf8');
+  for (const helper of ['promptLayoutId', 'promptTitleLayoutId', 'promptGlyphLayoutId']) assert.match(detail, new RegExp(helper));
+  assert.match(detail, /sourceAvailable/);
+  assert.match(detail, /getPromptTransitionMode/);
+  assert.match(detail, /===\s*['"]shared['"]|transitionMode\s*===\s*['"]shared['"]/);
+  assert.match(detail, /opacity/);
+  assert.match(detail, /useReducedMotion/);
+  assert.equal(/rotateX|rotateY|perspective/.test(detail), false);
 });
