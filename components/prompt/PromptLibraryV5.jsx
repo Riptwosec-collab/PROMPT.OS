@@ -1,12 +1,15 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react';
 import PromptSearch from './PromptSearch.jsx';
 import PromptDetailV2 from './PromptDetailV2.jsx';
+import PromptCardV5 from './PromptCardV5.jsx';
 import PromptPacks from './PromptPacks.jsx';
 import WorkspaceSidebar from '../workspace/WorkspaceSidebar.jsx';
 import { AI_PROMPT_LIBRARY } from '../../lib/prompts/ai-prompt-library.mjs';
 import { buildSmartCollections } from '../../lib/prompts/smart-collections.mjs';
+import { scorePromptHealth } from '../../lib/prompts/health-score.mjs';
 import { createPack } from '../../lib/prompts/packs.mjs';
 import {
   loadPromptCatalogState,
@@ -15,6 +18,7 @@ import {
 import { buildDefaultPacks } from '../../lib/prompts/default-packs.mjs';
 import { normalizeWorkspaceState } from '../../lib/workspace/model.mjs';
 import { searchPrompts } from '../../lib/search/prompt-search.mjs';
+import { shouldHandleShortcut } from '../../lib/ui/command-palette.mjs';
 
 const STORAGE_KEY = 'promptVaultData';
 
@@ -41,6 +45,8 @@ export default function PromptLibraryV5({
   healthEnabled = false,
   workspaceEnabled = false,
   smartCollectionsEnabled = false,
+  premiumCardsEnabled = false,
+  sharedTransitionEnabled = false,
   externalRequest = null,
   onExternalRequestHandled,
   onOpenPrompt,
@@ -56,6 +62,8 @@ export default function PromptLibraryV5({
     workspaceState: normalizeWorkspaceState({}),
     packs: buildDefaultPacks(AI_PROMPT_LIBRARY),
   }));
+  const searchInputRef = useRef(null);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const { prompts: loadedPrompts, database } = loadPromptCatalogState(browserStorage(), AI_PROMPT_LIBRARY, STORAGE_KEY);
@@ -64,12 +72,27 @@ export default function PromptLibraryV5({
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    const handleSearchShortcut = (event) => {
+      if (event.key !== '/') return;
+      if (!shouldHandleShortcut(event)) return;
+      event.preventDefault();
+      searchInputRef.current?.focus();
+    };
+    document.addEventListener('keydown', handleSearchShortcut);
+    return () => document.removeEventListener('keydown', handleSearchShortcut);
+  }, []);
+
   const categories = useMemo(() => uniqueValues(prompts, 'category'), [prompts]);
   const difficulties = useMemo(() => uniqueValues(prompts, 'difficulty'), [prompts]);
   const sources = useMemo(() => uniqueValues(prompts, 'sourceType'), [prompts]);
   const smartCollections = useMemo(() => buildSmartCollections(prompts, new Date()), [prompts]);
   const searchedPrompts = useMemo(() => searchPrompts(prompts, query, filters), [prompts, query, filters]);
   const selectedPrompt = useMemo(() => prompts.find((prompt) => prompt.id === selectedPromptId) || null, [prompts, selectedPromptId]);
+  const healthScores = useMemo(() => {
+    if (!healthEnabled) return new Map();
+    return new Map(prompts.map((prompt) => [String(prompt.id), scorePromptHealth(prompt).total]));
+  }, [healthEnabled, prompts]);
   const workspace = organization.workspaceState.workspaces[0];
   const folders = organization.workspaceState.folders;
 
@@ -185,6 +208,7 @@ export default function PromptLibraryV5({
               categories={categories}
               difficulties={difficulties}
               sources={sources}
+              inputRef={searchInputRef}
             />
 
             {smartCollectionsEnabled && smartCollections.recentlyUsed.length > 0 ? (
@@ -203,11 +227,40 @@ export default function PromptLibraryV5({
               />
             ) : null}
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">
-              {results.map((prompt) => (
-                <PromptCard key={prompt.id} prompt={prompt} onOpen={() => openPrompt(prompt.id)} />
-              ))}
-            </div>
+            {premiumCardsEnabled ? (
+              <LayoutGroup id="premium-prompt-grid">
+                <div className="v5-premium-grid grid grid-cols-1 gap-4 lg:grid-cols-2" aria-live="polite">
+                  <AnimatePresence initial={false}>
+                    {results.map((prompt) => (
+                      <motion.div
+                        layout
+                        key={prompt.id}
+                        initial={reducedMotion ? false : { opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+                        transition={{ duration: reducedMotion ? 0 : 0.16 }}
+                      >
+                        <PromptCardV5
+                          prompt={prompt}
+                          healthScore={healthEnabled ? healthScores.get(String(prompt.id)) : null}
+                          onOpen={openPrompt}
+                          onRun={onRunPrompt}
+                          onFavorite={(id, favorite) => patchPrompt(id, { favorite })}
+                          onPin={(id, pinned) => patchPrompt(id, { pinned })}
+                          transitionEnabled={sharedTransitionEnabled}
+                        />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </LayoutGroup>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">
+                {results.map((prompt) => (
+                  <PromptCard key={prompt.id} prompt={prompt} onOpen={() => openPrompt(prompt.id)} />
+                ))}
+              </div>
+            )}
 
             {results.length === 0 ? (
               <div className="v5-glass rounded-2xl border border-white/10 p-10 text-center text-sm text-slate-400">No matching prompts / ไม่พบพรอมต์ที่ตรงกัน</div>
