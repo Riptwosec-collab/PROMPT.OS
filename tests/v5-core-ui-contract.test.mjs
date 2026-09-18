@@ -17,9 +17,10 @@ test('PromptSearch exposes quick filters and advanced filter controls', () => {
   assert.match(source, /aria-label="Search prompts"/);
 });
 
-test('V5 library delegates ranking to Search V2 and preserves the shared promptVaultData storage key', () => {
+test('V5 library delegates ranking and shared catalog storage through approved helpers', () => {
   const source = fs.readFileSync('components/prompt/PromptLibraryV5.jsx', 'utf8');
   assert.match(source, /searchPrompts/);
   assert.match(source, /promptVaultData/);
-  assert.match(source, /mergePromptCatalog/);
+  assert.match(source, /loadPromptCatalogState/);
+  assert.match(source, /persistPromptCatalogState/);
 });
