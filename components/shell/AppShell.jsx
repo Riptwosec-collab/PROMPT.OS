@@ -17,7 +17,7 @@ export default function AppShell({
   visualSystemEnabled = false,
 }) {
   return (
-    <div className="v5-shell min-h-screen bg-[var(--v5-bg)] text-slate-200 overflow-hidden relative">
+    <div className={`v5-shell min-h-screen bg-[var(--v5-bg)] text-slate-200 overflow-hidden relative ${visualSystemEnabled ? 'v5-visual-enabled' : ''}`}>
       {visualSystemEnabled ? (
         <AuroraBackground />
       ) : (
