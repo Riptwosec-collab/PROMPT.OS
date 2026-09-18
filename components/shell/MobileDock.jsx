@@ -1,31 +1,47 @@
 'use client';
 
 import React from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 
 const ITEMS = [
-  ['home', 'HOME'],
-  ['library', 'LIBRARY'],
-  ['new', '+'],
-  ['evaluation', 'LAB'],
-  ['settings', 'MORE'],
+  ['library', 'LIBRARY', 'library'],
+  ['workspaces', 'WORKSPACES', 'workspaces'],
+  ['create', 'CREATE', null],
+  ['activity', 'ACTIVITY', 'analytics'],
+  ['more', 'MORE', null],
 ];
 
-export default function MobileDock({ activePage, onNavigate, onNewPrompt }) {
+export default function MobileDock({ activePage, onNavigate, onNewPrompt, onOpenMore }) {
+  const reducedMotion = useReducedMotion();
+
   return (
-    <nav className="v5-glass md:hidden fixed bottom-3 left-3 right-3 z-[80] rounded-2xl px-2 py-2 grid grid-cols-5 gap-1 shadow-[0_18px_60px_rgba(0,0,0,0.55)]">
-      {ITEMS.map(([id, label]) => {
-        const isNew = id === 'new';
-        const active = activePage === id;
-        const disabled = isNew && !onNewPrompt;
+    <nav className="v5-mobile-dock v5-glass fixed left-3 right-3 z-[80] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 px-1.5 py-2 shadow-[0_18px_60px_rgba(0,0,0,0.55)] md:hidden" aria-label="Primary navigation">
+      {ITEMS.map(([id, label, target]) => {
+        const isCreate = id === 'create';
+        const isMore = id === 'more';
+        const active = target ? activePage === target : false;
+        const handleClick = () => {
+          if (isCreate) onNewPrompt?.();
+          else if (isMore) onOpenMore?.();
+          else onNavigate?.(target);
+        };
+
         return (
           <button
             key={id}
             type="button"
-            disabled={isNew && !onNewPrompt}
-            onClick={() => (isNew ? onNewPrompt?.() : onNavigate(id))}
-            className={`min-h-12 rounded-xl text-[9px] font-mono tracking-[0.12em] ${disabled ? 'bg-slate-800/60 text-slate-600 cursor-not-allowed' : isNew ? 'bg-cyan-300 text-slate-950 font-black text-lg' : active ? 'bg-cyan-300/10 text-cyan-100' : 'text-slate-500 hover:text-cyan-100'}`}
+            onClick={handleClick}
+            className={`relative min-h-12 min-w-0 rounded-xl px-1 text-[9px] font-mono tracking-[0.04em] ${isCreate ? 'v5-mobile-create -translate-y-2 bg-cyan-200 text-slate-950 shadow-[0_10px_30px_rgba(103,232,249,0.18)]' : active ? 'text-cyan-50' : 'text-slate-500'}`}
+            aria-current={active ? 'page' : undefined}
           >
-            {label}
+            {active ? (
+              <motion.span
+                layoutId="v5-mobile-active"
+                className="v5-mobile-active pointer-events-none absolute inset-1 rounded-lg"
+                transition={reducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
+              />
+            ) : null}
+            <span className="relative z-10 block truncate">{label}</span>
           </button>
         );
       })}
