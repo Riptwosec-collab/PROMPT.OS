@@ -21,6 +21,13 @@ test('top bar exposes command capability only when enabled and accepts real stat
   assert.match(source, /status\s*\?/);
 });
 
+test('shell does not present placeholder cloud status as real telemetry', () => {
+  const page = read('app/page.jsx');
+  const shell = read('components/shell/AppShell.jsx');
+  assert.equal(/const status\s*=\s*\{[\s\S]*mode:\s*['"]ready['"]/.test(page), false);
+  assert.match(shell, /status\s*\?\s*<StatusHud\s+status=\{status\}\s*\/>\s*:\s*null/);
+});
+
 test('mobile dock has approved destinations, one shared indicator, safe area and 44px targets', () => {
   const source = read('components/shell/MobileDock.jsx');
   const css = read('app/globals.css');
