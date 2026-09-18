@@ -264,6 +264,16 @@ select {
   }
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .v5-pointer-spotlight::before {
+    opacity: 0.85;
+  }
+
+  .v5-command-spotlight::before {
+    opacity: 0.92;
+  }
+}
+
 @media (hover: none), (pointer: coarse) {
   .v5-pointer-spotlight::before {
     opacity: 0;
