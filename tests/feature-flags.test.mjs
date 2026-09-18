@@ -7,7 +7,7 @@ const EXPECTED_FLAGS = [
   'V5_SEARCH', 'V5_PROMPT_DETAIL', 'V5_VARIABLES', 'V5_PROMPT_HEALTH',
   'V5_SMART_COLLECTIONS', 'V5_EXECUTION_ENGINE', 'V5_AI_IMPROVE',
   'V5_COST_GUARD', 'V5_PROVIDER_SELECTOR', 'V5_COMMAND_PALETTE',
-  'V5_CLOUD_SYNC', 'V5_USAGE_ANALYTICS', 'V5_WORKFLOW',
+  'V5_CLOUD_SYNC', 'V5_USAGE_ANALYTICS', 'V5_WORKFLOW', 'V5_VISUAL_SYSTEM',
 ];
 
 test('V5 flags default to false with the complete legacy and granular flag set', () => {
@@ -34,4 +34,10 @@ test('legacy flags remain supported while granular flags use the same parsing ru
   assert.equal(flags.V5_EVALUATION, false);
   assert.equal(flags.V5_ANALYTICS, true);
   assert.equal(flags.V5_SEARCH, true);
+});
+
+test('visual system flag is default-off and only explicit true enables it', () => {
+  assert.equal(readFeatureFlags({}).V5_VISUAL_SYSTEM, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_VISUAL_SYSTEM: ' true ' }).V5_VISUAL_SYSTEM, true);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_VISUAL_SYSTEM: '1' }).V5_VISUAL_SYSTEM, false);
 });
