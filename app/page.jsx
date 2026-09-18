@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import LanguageRuntime from '../components/LanguageRuntime.jsx';
 import { V5FeatureFlagProvider } from '../components/V5FeatureFlagProvider.jsx';
@@ -26,6 +26,15 @@ const PromptLibraryV5 = dynamic(() => import('../components/prompt/PromptLibrary
   ),
 });
 
+const MissionControl = dynamic(() => import('../components/home/MissionControl.jsx'), {
+  ssr: false,
+  loading: () => (
+    <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">
+      LOADING_MISSION_CONTROL...
+    </main>
+  ),
+});
+
 function PlaceholderPanel({ activePage }) {
   const item = V5_NAV_ITEMS.find((entry) => entry.id === activePage);
   return (
@@ -42,8 +51,19 @@ function PlaceholderPanel({ activePage }) {
 }
 
 export default function HomePage() {
-  const [activePage, setActivePage] = useState('library');
-  const navigate = (page) => setActivePage(normalizeV5Page(page));
+  const [activePage, setActivePage] = useState(() => V5_FEATURE_FLAGS.V5_MISSION_CONTROL ? 'home' : 'library');
+  const [libraryRequest, setLibraryRequest] = useState(null);
+  const navigate = useCallback((page) => setActivePage(normalizeV5Page(page)), []);
+  const clearLibraryRequest = useCallback(() => setLibraryRequest(null), []);
+  const openLibraryPrompt = useCallback((id) => {
+    setLibraryRequest({ type: 'prompt', id });
+    setActivePage('library');
+  }, []);
+  const openLibraryView = useCallback((viewId) => {
+    setLibraryRequest({ type: 'view', viewId });
+    setActivePage('library');
+  }, []);
+
   const status = { mode: 'ready', revision: '—', pendingCount: 0, lastSyncedAt: null, version: 'V5 PREVIEW' };
   const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
   const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
@@ -53,6 +73,8 @@ export default function HomePage() {
   const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
   const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
   const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);
+  const v5MissionControlEnabled = Boolean(V5_FEATURE_FLAGS.V5_MISSION_CONTROL);
+  const v5UsageAnalyticsEnabled = Boolean(V5_FEATURE_FLAGS.V5_USAGE_ANALYTICS);
 
   if (!v5ShellEnabled) {
     return (
@@ -71,7 +93,19 @@ export default function HomePage() {
           status={status}
           visualSystemEnabled={v5VisualSystemEnabled}
         >
-          {activePage === 'library' ? (
+          {activePage === 'home' && v5MissionControlEnabled ? (
+            <MissionControl
+              onOpenCommand={() => navigate('library')}
+              onOpenPrompt={openLibraryPrompt}
+              onOpenPack={openLibraryView}
+              onOpenCollection={openLibraryView}
+              onNavigate={navigate}
+              cloudStatus={null}
+              usageEnabled={v5UsageAnalyticsEnabled}
+              healthEnabled={v5PromptHealthEnabled}
+              smartCollectionsEnabled={v5SmartCollectionsEnabled}
+            />
+          ) : activePage === 'library' ? (
             v5SearchEnabled ? (
               <PromptLibraryV5
                 detailEnabled={v5PromptDetailEnabled}
@@ -79,6 +113,8 @@ export default function HomePage() {
                 healthEnabled={v5PromptHealthEnabled}
                 workspaceEnabled={v5WorkspaceEnabled}
                 smartCollectionsEnabled={v5SmartCollectionsEnabled}
+                externalRequest={libraryRequest}
+                onExternalRequestHandled={clearLibraryRequest}
               />
             ) : (
               <div className="v5-legacy-frame h-full">

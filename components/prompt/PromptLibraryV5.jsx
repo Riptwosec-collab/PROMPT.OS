@@ -41,6 +41,8 @@ export default function PromptLibraryV5({
   healthEnabled = false,
   workspaceEnabled = false,
   smartCollectionsEnabled = false,
+  externalRequest = null,
+  onExternalRequestHandled,
   onOpenPrompt,
   onRunPrompt,
 }) {
@@ -49,6 +51,7 @@ export default function PromptLibraryV5({
   const [filters, setFilters] = useState({});
   const [selectedPromptId, setSelectedPromptId] = useState(null);
   const [activeView, setActiveView] = useState('all');
+  const [hydrated, setHydrated] = useState(false);
   const [organization, setOrganization] = useState(() => ({
     workspaceState: normalizeWorkspaceState({}),
     packs: buildDefaultPacks(AI_PROMPT_LIBRARY),
@@ -58,6 +61,7 @@ export default function PromptLibraryV5({
     const { prompts: loadedPrompts, database } = loadPromptCatalogState(browserStorage(), AI_PROMPT_LIBRARY, STORAGE_KEY);
     setPrompts(loadedPrompts);
     setOrganization(loadOrganization(loadedPrompts, database));
+    setHydrated(true);
   }, []);
 
   const categories = useMemo(() => uniqueValues(prompts, 'category'), [prompts]);
@@ -93,6 +97,22 @@ export default function PromptLibraryV5({
     onOpenPrompt?.(id);
     if (detailEnabled) setSelectedPromptId(id);
   };
+
+  useEffect(() => {
+    if (!hydrated || !externalRequest) return;
+
+    if (externalRequest.type === 'prompt') {
+      const target = prompts.find((prompt) => String(prompt.id) === String(externalRequest.id));
+      if (target) openPrompt(target.id);
+      onExternalRequestHandled?.();
+      return;
+    }
+
+    if (externalRequest.type === 'view' && typeof externalRequest.viewId === 'string') {
+      setActiveView(externalRequest.viewId);
+      onExternalRequestHandled?.();
+    }
+  }, [hydrated, externalRequest, prompts, detailEnabled, onExternalRequestHandled]);
 
   const patchPrompt = (id, patch) => {
     setPrompts((current) => {
