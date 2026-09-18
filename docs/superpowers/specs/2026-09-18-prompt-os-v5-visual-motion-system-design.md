@@ -131,9 +131,9 @@ Do not overuse uppercase or wide letter spacing. Technical typography is an acce
 
 ### 5.1 Architecture
 
-Use a dedicated motion orchestration layer for layout/shared-element/enter-exit/gesture behavior, paired with CSS/Tailwind for glass, aurora, and static visual effects.
+Use **Motion for React** as the motion orchestration layer for layout/shared-element/enter-exit/gesture behavior, paired with CSS/Tailwind for glass, aurora, and static visual effects.
 
-The implementation should favor a React-compatible motion library that supports:
+Required capabilities:
 
 - layout animation
 - shared layout IDs
@@ -142,7 +142,7 @@ The implementation should favor a React-compatible motion library that supports:
 - drag/swipe gestures
 - reduced-motion awareness
 
-The implementation plan should validate exact package compatibility with Next.js 16 / React 19 before adoption.
+Before installing the dependency, the implementation phase must verify the current Motion package against Next.js 16.3.5 and React 19.3.0. If compatibility validation fails, implementation must stop and revise this design choice rather than silently substituting a different animation engine.
 
 ### 5.2 Motion Tokens
 
@@ -728,18 +728,24 @@ Additional requirements:
 
 ## 22. Feature Flag & Rollout Strategy
 
-The redesign should remain compatible with the repository's granular default-off V5 flag strategy.
+The redesign must remain compatible with the repository's granular default-off V5 flag strategy.
 
-Recommended new rollout boundaries:
+Add these visual rollout flags:
 
 - `V5_VISUAL_SYSTEM` — tokens, aurora, new reusable surfaces
 - `V5_MISSION_CONTROL` — new Home experience
-- `V5_PREMIUM_CARDS` — new Prompt Library cards and search reflow motion
+- `V5_PREMIUM_CARDS` — new Prompt Library cards and layout motion
 - `V5_SHARED_PROMPT_TRANSITION` — shared card expansion/detail transition
 - `V5_IMMERSIVE_RUN` — immersive execution presentation
-- `V5_COMMAND_PALETTE_UI` — new palette presentation/interaction, reusing existing command capability flag where appropriate
 
-The implementation plan should decide whether some of these should map onto existing V5 flags instead of adding redundant flags. The principle is staged, reversible rollout with default-safe behavior.
+Reuse existing flags instead of introducing duplicates:
+
+- `V5_COMMAND_PALETTE` controls command palette capability and its new presentation
+- `V5_SEARCH` continues to control Search V2; `V5_PREMIUM_CARDS` may enhance result motion only when Search V2 is already active
+- `V5_PROMPT_DETAIL` continues to gate Prompt Detail capability
+- `V5_EXECUTION_ENGINE` continues to gate real execution capability; `V5_IMMERSIVE_RUN` changes presentation only and must not create a second execution path
+
+All new flags default to false.
 
 Legacy PromptOS must remain available until V5 visual acceptance and a separate removal decision.
 
@@ -758,7 +764,9 @@ It must not silently introduce:
 
 Existing V5 data/state behavior should be reused wherever possible.
 
-Run telemetry fields that do not yet exist in the execution layer may be visually stubbed only behind a development flag or omitted until the execution engine supplies real values. Production UI must not fabricate metrics.
+Production UI must display only telemetry supplied by the real execution layer. If tokens, cost, latency, provider, or model values are unavailable, omit the unavailable metric rather than estimating or fabricating it. Tests and Storybook-like development fixtures may use clearly local fixture data, but fixture values must never reach production state.
+
+Immersive Run is a presentation layer over the separately approved execution engine. This redesign must not create a second provider/request implementation.
 
 ## 24. Testing Strategy
 
