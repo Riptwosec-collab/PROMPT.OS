@@ -4,7 +4,7 @@
 
 **Goal:** Build the Mission Control home, morphing desktop navigation, floating mobile dock, first-class command palette, stable page transitions, and bounded toast feedback on top of the Phase 1 visual/motion foundation without fabricating usage or sync telemetry.
 
-**Architecture:** Reuse the existing prompt catalog/state, prompt health scorer, pack model, smart collections, and command ranking logic. Extract shared browser prompt-state loading and default-pack construction from `PromptLibraryV5` so Mission Control and Library consume the same records and pack references; render Home sections only from real local state. Navigation remains controlled by `app/page.jsx`, while Motion handles chrome/page transitions and the existing `V5_COMMAND_PALETTE` flag controls command capability.
+**Architecture:** Reuse the existing prompt catalog/state, prompt health scorer, pack model, smart collections, and command ranking logic. Extract shared browser prompt-state loading and default-pack construction from `PromptLibraryV5` so Mission Control, global command search, and Library consume the same records and pack references. `app/page.jsx` owns a small one-shot Library request seam so Home/Command Palette can navigate to a prompt, pack, or smart collection without duplicating Library state. Motion handles chrome/page transitions and the existing `V5_COMMAND_PALETTE` flag controls command capability.
 
 **Tech Stack:** Next 16.3.5, React 19.3.0, Tailwind 4.3.3, Motion for React, Node test runner.
 
@@ -22,6 +22,7 @@
 - Prompt Packs remain reference-only; default pack extraction must not clone prompt records.
 - Page transitions animate content only; the shell/navigation remains mounted and immediately interactive.
 - Toast stack is capped at 3 and is a presentation primitive only; it does not replace local confirmation when the triggering control can show `Copied`/`Saved` itself.
+- Global Home/Command Palette navigation may request a Library destination, but `PromptLibraryV5` remains the owner of selected prompt and active view state.
 - No production DB migration or production deploy.
 
 ---
@@ -95,21 +96,24 @@ test('mission control never invents execution telemetry', () => {
 - [ ] **Step 6: Run GREEN plus regressions.** `node --test tests/mission-control.test.mjs tests/v5-core-ui-contract.test.mjs tests/smart-collections.test.mjs tests/prompt-health-v2.test.mjs`.
 - [ ] **Step 7: Commit.** `git add lib/prompts/client-store.mjs lib/prompts/default-packs.mjs lib/home/mission-control.mjs components/prompt/PromptLibraryV5.jsx tests/mission-control.test.mjs && git commit -m "refactor: share prompt state with mission control"`.
 
-## Task 2: Add Mission Control Flag and Complete Home Surface
+## Task 2: Add Mission Control Flag, Library Request Seam, and Complete Home Surface
 
 **Interfaces:**
 - `V5_MISSION_CONTROL` is strict/default-off.
-- `<MissionControl onOpenCommand onOpenPrompt onNavigate cloudStatus usageEnabled healthEnabled smartCollectionsEnabled />` reads the shared local prompt state on mount and resolves default packs with `buildDefaultPacks`.
+- `libraryRequest` owned by `app/page.jsx` is either `null`, `{ type:'prompt', id }`, or `{ type:'view', viewId }` where view IDs match existing Library internal forms such as `pack:network-engineer` or `recentlyUsed`.
+- `PromptLibraryV5` gains optional props `externalRequest=null`, `onExternalRequestHandled` and a `hydrated` boolean. A prompt request is handled only after hydration and only when the requested prompt exists; a view request updates `activeView`. The handled callback clears the one-shot request so closing detail does not immediately reopen it.
+- `<MissionControl onOpenCommand onOpenPrompt onOpenPack onOpenCollection onNavigate cloudStatus usageEnabled healthEnabled smartCollectionsEnabled />` reads the shared local prompt state on mount and resolves default packs with `buildDefaultPacks`.
 - Required sections: Hero Command Bar; Continue Working when non-empty; AI Usage Pulse only when `usageEnabled` and real run/copy metrics exist; Featured Prompt Packs; Cloud/Sync only when a real `cloudStatus` is supplied; Prompt Health Summary only when `healthEnabled`; Activity Timeline when real activity exists; Smart Collections only when `smartCollectionsEnabled`.
 
 - [ ] **Step 1: Extend `tests/feature-flags.test.mjs`** with `V5_MISSION_CONTROL` and a strict true/default-off assertion.
-- [ ] **Step 2: Add RED UI contract** `tests/mission-control-ui-contract.test.mjs` asserting the component includes `Search prompts, commands, workflows`, `Continue Working`, `Featured Prompt Packs`, `Prompt Health`, `Activity`, and `Smart Collections`, while telemetry/cloud sections are conditional rather than hard-coded.
+- [ ] **Step 2: Add RED UI contract** `tests/mission-control-ui-contract.test.mjs` asserting the component includes `Search prompts, commands, workflows`, `Continue Working`, `Featured Prompt Packs`, `Prompt Health`, `Activity`, and `Smart Collections`, while telemetry/cloud sections are conditional rather than hard-coded. Also assert `app/page.jsx` has `libraryRequest`, and `PromptLibraryV5.jsx` accepts `externalRequest` plus `onExternalRequestHandled`.
 - [ ] **Step 3: Run RED.** `node --test tests/feature-flags.test.mjs tests/mission-control-ui-contract.test.mjs`.
 - [ ] **Step 4: Add `V5_MISSION_CONTROL`** to `lib/ui/feature-flags.mjs` and environment mapping.
-- [ ] **Step 5: Implement `MissionControl.jsx`.** Use `GlassSurface`, `GlassGlyph`, `MetricChip`, `AnimatedNumber`, and Motion layout primitives from Phase 1. Render the three resolved default packs as showcase cards with CSS/SVG micrographics. Hero command bar calls `onOpenCommand`; prompt cards call explicit callbacks. Hide every empty/disabled section.
-- [ ] **Step 6: Wire Home in `app/page.jsx`.** When `V5_MISSION_CONTROL` is true and `activePage==='home'`, render Mission Control. Initial page is `home` only when the flag is true; otherwise retain current `library` initial behavior so enabling unrelated V5 flags never lands users on placeholder Home. Pass `healthEnabled` from `V5_PROMPT_HEALTH`, `smartCollectionsEnabled` from `V5_SMART_COLLECTIONS`, and `usageEnabled` from `V5_USAGE_ANALYTICS`. Pass `cloudStatus=null` until a real cloud-sync state seam is available; do not reuse the current preview shell status as cloud telemetry.
-- [ ] **Step 7: Run GREEN.** `node --test tests/feature-flags.test.mjs tests/mission-control.test.mjs tests/mission-control-ui-contract.test.mjs tests/v5-core-ui-contract.test.mjs`.
-- [ ] **Step 8: Commit.** `git add lib/ui/feature-flags.mjs tests/feature-flags.test.mjs components/home/MissionControl.jsx app/page.jsx tests/mission-control-ui-contract.test.mjs && git commit -m "feat: add mission control home"`.
+- [ ] **Step 5: Implement the one-shot Library request seam.** In `app/page.jsx`, add helpers that set `{ type:'prompt', id }` / `{ type:'view', viewId }` then navigate to `library`; clear only from `onExternalRequestHandled`. In `PromptLibraryV5`, set `hydrated=true` after loading local data, then consume a valid request in an effect. If a hydrated prompt request cannot be found, clear it without opening arbitrary content.
+- [ ] **Step 6: Implement `MissionControl.jsx`.** Use `GlassSurface`, `GlassGlyph`, `MetricChip`, `AnimatedNumber`, and Motion layout primitives from Phase 1. Render resolved default packs as showcase cards with CSS/SVG micrographics. Hero command bar calls `onOpenCommand`; recent prompts call `onOpenPrompt(id)`; pack cards call `onOpenPack('pack:' + pack.id)`; smart collection tiles call `onOpenCollection(key)`. Hide every empty/disabled section.
+- [ ] **Step 7: Wire Home in `app/page.jsx`.** When `V5_MISSION_CONTROL` is true and `activePage==='home'`, render Mission Control. Initial page is `home` only when the flag is true; otherwise retain current `library` initial behavior so enabling unrelated V5 flags never lands users on placeholder Home. Pass `healthEnabled` from `V5_PROMPT_HEALTH`, `smartCollectionsEnabled` from `V5_SMART_COLLECTIONS`, and `usageEnabled` from `V5_USAGE_ANALYTICS`. Pass `cloudStatus=null` until a real cloud-sync state seam is available; do not reuse the current preview shell status as cloud telemetry.
+- [ ] **Step 8: Run GREEN.** `node --test tests/feature-flags.test.mjs tests/mission-control.test.mjs tests/mission-control-ui-contract.test.mjs tests/v5-core-ui-contract.test.mjs`.
+- [ ] **Step 9: Commit.** `git add lib/ui/feature-flags.mjs tests/feature-flags.test.mjs components/home/MissionControl.jsx components/prompt/PromptLibraryV5.jsx app/page.jsx tests/mission-control-ui-contract.test.mjs && git commit -m "feat: add mission control home"`.
 
 ## Task 3: Build Command Items and Command Palette V5
 
@@ -117,14 +121,16 @@ test('mission control never invents execution telemetry', () => {
 - `buildCommandItems({ navItems, prompts, actions=[] }) -> Array<{ id, kind, title, keywords, action }>`; kinds are `command`, `navigation`, `prompt`.
 - Continue using `rankCommandItems(query, items)` and `shouldHandleShortcut(eventLike)` from `lib/ui/command-palette.mjs`.
 - `<CommandPaletteV5 open items onClose onExecute />` supports ArrowUp/ArrowDown, Enter, Escape, focus restoration, `role="dialog"`, `aria-modal="true"`, and a combobox/listbox relationship.
+- `openCommandPalette()` in `app/page.jsx` performs a fresh `loadPromptCatalogState(window.localStorage, AI_PROMPT_LIBRARY)` read at open time, then builds items. This avoids stale prompt titles without introducing a second long-lived prompt state owner.
+- Prompt command execution calls the same `libraryRequest` helper from Task 2; navigation command execution calls `navigate(page)`.
 
 - [ ] **Step 1: Extend model tests** in `tests/command-palette.test.mjs` for navigation/prompt item construction and stable ranking.
-- [ ] **Step 2: Add RED component contract** `tests/command-palette-v5-ui.test.mjs` asserting `role="dialog"`, `aria-modal`, ArrowDown/ArrowUp/Enter/Escape handling, and `AnimatePresence`.
+- [ ] **Step 2: Add RED component contract** `tests/command-palette-v5-ui.test.mjs` asserting `role="dialog"`, `aria-modal`, ArrowDown/ArrowUp/Enter/Escape handling, `AnimatePresence`, fresh `loadPromptCatalogState` use when opening, and prompt actions routed through the Library request seam.
 - [ ] **Step 3: Run RED.** `node --test tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs`.
 - [ ] **Step 4: Implement `lib/ui/command-items.mjs`.** Navigation actions return `{ type: 'navigate', page }`; prompt actions return `{ type: 'prompt', promptId }`; action entries preserve their explicit action payload.
 - [ ] **Step 5: Implement `CommandPaletteV5.jsx`.** On open, save `document.activeElement`, focus the search input, rank with the existing model, clamp selection after result changes, execute selected item on Enter, close on Escape, and restore prior focus on close. Use Motion spring on desktop and a full-screen sheet breakpoint on mobile.
-- [ ] **Step 6: Wire `Ctrl/Meta+K` in `app/page.jsx`.** Register one document keydown listener only when `V5_COMMAND_PALETTE` is enabled; use `shouldHandleShortcut`. Slash-to-search is handled by the Premium Prompt phase where a Library search ref exists.
-- [ ] **Step 7: Run GREEN.** `node --test tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs`.
+- [ ] **Step 6: Wire palette opening/execution in `app/page.jsx`.** Register one document keydown listener only when `V5_COMMAND_PALETTE` is enabled; use `shouldHandleShortcut` for `Ctrl/Meta+K`. On open, read fresh prompts and build items. On execute, route navigation directly and prompt actions through `libraryRequest`; then close. Slash-to-search is handled by the Premium Prompt phase where a Library search ref exists.
+- [ ] **Step 7: Run GREEN.** `node --test tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs tests/mission-control-ui-contract.test.mjs`.
 - [ ] **Step 8: Commit.** `git add lib/ui/command-items.mjs components/command/CommandPaletteV5.jsx app/page.jsx tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs && git commit -m "feat: add command palette v5"`.
 
 ## Task 4: Morphing Navigation, Stable Page Motion, and Toast Feedback
