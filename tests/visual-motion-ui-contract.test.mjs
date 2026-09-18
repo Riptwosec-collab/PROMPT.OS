@@ -30,3 +30,18 @@ test('visual system is separately gated and legacy shell path remains', () => {
   assert.match(shell, /AuroraBackground/);
   assert.match(shell, /v5-ambient/);
 });
+
+test('legacy glass styling stays unchanged until the visual system gate is enabled', () => {
+  const css = read('app/globals.css');
+  const shell = read('components/shell/AppShell.jsx');
+
+  assert.match(
+    css,
+    /\.v5-glass\s*\{[\s\S]*?background:\s*var\(--v5-glass\);[\s\S]*?border-color:\s*var\(--v5-line\);[\s\S]*?\}/,
+  );
+  assert.match(
+    css,
+    /\.v5-visual-enabled\s+\.v5-glass\s*\{[\s\S]*?background:\s*var\(--v5-glass-panel\);[\s\S]*?border-color:\s*var\(--v5-border-panel\);[\s\S]*?box-shadow:\s*var\(--v5-shadow-medium\);[\s\S]*?\}/,
+  );
+  assert.match(shell, /v5-visual-enabled/);
+});
