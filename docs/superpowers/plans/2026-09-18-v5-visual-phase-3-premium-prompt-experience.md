@@ -16,6 +16,7 @@
 - Add `V5_PREMIUM_CARDS` and `V5_SHARED_PROMPT_TRANSITION`, both default false.
 - `V5_SEARCH` continues to own Search V2 capability; premium cards only enhance its presentation.
 - `V5_PROMPT_DETAIL` continues to own Prompt Detail capability; shared transition must never create a second detail implementation.
+- `V5_PROMPT_HEALTH` remains the authority for whether Prompt Health data is shown; card health values use the existing local deterministic `scorePromptHealth` only.
 - Variables V2 values and validation, Prompt Health calculation, Smart Collections, Packs, and workspace reference semantics stay unchanged.
 - Fine-pointer effects are disabled on coarse pointers and under reduced motion.
 - No destructive swipe actions.
@@ -79,7 +80,8 @@ test('premium prompt presentation is independently gated', () => {
 - `promptLayoutId(id) -> "prompt-card-${String(id)}"`.
 - `getPromptTransitionMode({ enabled, reducedMotion, sourceAvailable }) -> 'shared'|'fade'`.
 - `<PromptCardV5 prompt healthScore onOpen onRun onFavorite onPin transitionEnabled reducedMotion />`.
-- Card exposes title, category, 2–3 line description, variable count, health indicator when available, real model/usage metadata when present, Favorite/Pin/Run actions.
+- `healthScore` is either `null` or the `.total` returned by existing `scorePromptHealth(prompt)`; the card never recalculates health independently.
+- Card exposes title, category, 2–3 line description, variable count, health indicator when `healthScore` is non-null, real model/usage metadata when present, Favorite/Pin/Run actions.
 
 - [ ] **Step 1: Write `tests/shared-prompt-transition.test.mjs`.** Assert stable layout IDs and fade fallback for reduced motion or missing source:
 
@@ -92,10 +94,10 @@ test('shared prompt transition falls back safely', () => {
 });
 ```
 
-- [ ] **Step 2: Add RED source contracts** in `tests/premium-prompt-card.test.mjs` asserting `PromptCardV5` contains accessible buttons for Run/Favorite/Pin, `layoutId`, a variable count, Prompt Health label, and no hard-coded fake model/tokens/cost.
+- [ ] **Step 2: Add RED source contracts** in `tests/premium-prompt-card.test.mjs` asserting `PromptCardV5` contains accessible buttons for Run/Favorite/Pin, `layoutId`, a variable count, conditional Prompt Health rendering, and no hard-coded fake model/tokens/cost.
 - [ ] **Step 3: Run RED.** `node --test tests/shared-prompt-transition.test.mjs tests/premium-prompt-card.test.mjs`.
 - [ ] **Step 4: Implement `lib/ui/prompt-transition.mjs`.** Pure functions only; no DOM access.
-- [ ] **Step 5: Implement `PromptCardV5.jsx`.** Use `MotionSurface`, `GlassGlyph`, and existing health data. On fine-pointer devices, update `--card-pointer-x/y` on a ref in `requestAnimationFrame`; never store pointer coordinates in React state. Limit hover lift to 4px and do not rotate the card.
+- [ ] **Step 5: Implement `PromptCardV5.jsx`.** Use `MotionSurface`, `GlassGlyph`, and the passed `healthScore`. On fine-pointer devices, update `--card-pointer-x/y` on a ref in `requestAnimationFrame`; never store pointer coordinates in React state. Limit hover lift to 4px and do not rotate the card.
 - [ ] **Step 6: Implement card CSS** in `app/globals.css`: two-layer edge highlight, clamped description, hidden/revealed quick actions on hover/focus-within, and coarse-pointer rules that keep essential actions reachable without hover.
 - [ ] **Step 7: Run GREEN.** `node --test tests/shared-prompt-transition.test.mjs tests/premium-prompt-card.test.mjs`.
 - [ ] **Step 8: Commit.** `git add lib/ui/prompt-transition.mjs components/prompt/PromptCardV5.jsx app/globals.css tests/shared-prompt-transition.test.mjs tests/premium-prompt-card.test.mjs && git commit -m "feat: add premium intelligence prompt card"`.
@@ -108,14 +110,15 @@ test('shared prompt transition falls back safely', () => {
 - When premium cards are disabled, retain the current card/list rendering path unchanged.
 - Search result containers use Motion `layout`; removed/inserted cards use `AnimatePresence` with opacity + <=12px y translation.
 - `PromptSearch` accepts optional `inputRef` so `/` can focus the search field without changing search semantics.
+- When `healthEnabled` is true, `PromptLibraryV5` memoizes a `Map(String(prompt.id) -> scorePromptHealth(prompt).total)` and passes scores to cards; when false it passes `null` and performs no card-health scoring.
 
-- [ ] **Step 1: Extend `tests/premium-prompt-ui-contract.test.mjs`** to assert `lg:grid-cols-2`, absence of `lg:grid-cols-3`/`4` in the premium primary grid, `AnimatePresence`, `layout`, and a fallback branch for disabled premium cards.
+- [ ] **Step 1: Extend `tests/premium-prompt-ui-contract.test.mjs`** to assert `lg:grid-cols-2`, absence of `lg:grid-cols-3`/`4` in the premium primary grid, `AnimatePresence`, `layout`, a fallback branch for disabled premium cards, and reuse of `scorePromptHealth` only under `healthEnabled`.
 - [ ] **Step 2: Add a RED keyboard contract** that `PromptLibraryV5` registers `/` only when the event target is not editable and calls `searchInputRef.current?.focus()`.
 - [ ] **Step 3: Run RED.** `node --test tests/premium-prompt-ui-contract.test.mjs`.
 - [ ] **Step 4: Modify `PromptSearch.jsx`.** Forward/use `inputRef` on its search input; preserve current query/filter callbacks and ARIA label.
-- [ ] **Step 5: Modify `PromptLibraryV5.jsx`.** Keep existing search/selectors; in premium mode map results to `PromptCardV5` inside `LayoutGroup`/`AnimatePresence`. Use result IDs as stable keys. Add `/` shortcut through the existing editable-target policy from `lib/ui/command-palette.mjs`.
+- [ ] **Step 5: Modify `PromptLibraryV5.jsx`.** Keep existing search/selectors; memoize the optional health-score map; in premium mode map results to `PromptCardV5` inside `LayoutGroup`/`AnimatePresence`. Use result IDs as stable keys. Add `/` shortcut through the existing editable-target policy from `lib/ui/command-palette.mjs`.
 - [ ] **Step 6: Ensure search is immediate.** Query/filter state changes must not wait for exit animation completion; Motion decorates already-computed results only.
-- [ ] **Step 7: Run GREEN plus Search regressions.** `node --test tests/premium-prompt-ui-contract.test.mjs tests/search-v2.test.mjs tests/v5-core-ui-contract.test.mjs`.
+- [ ] **Step 7: Run GREEN plus Search/Health regressions.** `node --test tests/premium-prompt-ui-contract.test.mjs tests/search-v2.test.mjs tests/prompt-health-v2.test.mjs tests/v5-core-ui-contract.test.mjs`.
 - [ ] **Step 8: Commit.** `git add components/prompt/PromptLibraryV5.jsx components/prompt/PromptSearch.jsx tests/premium-prompt-ui-contract.test.mjs && git commit -m "feat: add spacious prompt library motion"`.
 
 ## Task 4: Mobile Long-Press Quick Actions Without Destructive Swipes
