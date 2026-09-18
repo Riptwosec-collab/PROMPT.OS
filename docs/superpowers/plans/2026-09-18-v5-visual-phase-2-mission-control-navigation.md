@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Mission Control home, morphing desktop navigation, floating mobile dock, and first-class command palette on top of the Phase 1 visual/motion foundation without fabricating usage or sync telemetry.
+**Goal:** Build the Mission Control home, morphing desktop navigation, floating mobile dock, first-class command palette, stable page transitions, and bounded toast feedback on top of the Phase 1 visual/motion foundation without fabricating usage or sync telemetry.
 
-**Architecture:** Reuse the existing prompt catalog/state, prompt health scorer, pack model, smart collections, and command ranking logic. Extract shared browser prompt-state loading and default-pack construction from `PromptLibraryV5` so Mission Control and Library consume the same records and pack references; render Home sections only from real local state. Navigation remains controlled by `app/page.jsx`, while Motion handles chrome transitions and the existing `V5_COMMAND_PALETTE` flag controls command capability.
+**Architecture:** Reuse the existing prompt catalog/state, prompt health scorer, pack model, smart collections, and command ranking logic. Extract shared browser prompt-state loading and default-pack construction from `PromptLibraryV5` so Mission Control and Library consume the same records and pack references; render Home sections only from real local state. Navigation remains controlled by `app/page.jsx`, while Motion handles chrome/page transitions and the existing `V5_COMMAND_PALETTE` flag controls command capability.
 
 **Tech Stack:** Next 16.3.5, React 19.3.0, Tailwind 4.3.3, Motion for React, Node test runner.
 
@@ -20,6 +20,8 @@
 - Legacy PromptOS and Library fallback remain available.
 - Existing prompt records remain single-source and the built-in catalog remains exactly 80.
 - Prompt Packs remain reference-only; default pack extraction must not clone prompt records.
+- Page transitions animate content only; the shell/navigation remains mounted and immediately interactive.
+- Toast stack is capped at 3 and is a presentation primitive only; it does not replace local confirmation when the triggering control can show `Copied`/`Saved` itself.
 - No production DB migration or production deploy.
 
 ---
@@ -31,13 +33,17 @@
 - `lib/prompts/default-packs.mjs` — default pack blueprints and reference-only resolver shared by Home and Library.
 - `lib/home/mission-control.mjs` — pure Mission Control selectors/view model.
 - `lib/ui/command-items.mjs` — maps navigation/prompts/actions into the existing command-ranking shape.
+- `lib/ui/toast-queue.mjs` — pure bounded queue helper with max visible size 3.
 - `components/home/MissionControl.jsx`
 - `components/command/CommandPaletteV5.jsx`
 - `components/shell/CreateActionSheet.jsx`
+- `components/shell/PageTransition.jsx`
+- `components/ui/ToastViewport.jsx`
 - `tests/mission-control.test.mjs`
 - `tests/mission-control-ui-contract.test.mjs`
 - `tests/command-palette-v5-ui.test.mjs`
 - `tests/navigation-motion-ui.test.mjs`
+- `tests/toast-queue.test.mjs`
 
 **Modify**
 - `lib/ui/feature-flags.mjs`
@@ -121,7 +127,7 @@ test('mission control never invents execution telemetry', () => {
 - [ ] **Step 7: Run GREEN.** `node --test tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs`.
 - [ ] **Step 8: Commit.** `git add lib/ui/command-items.mjs components/command/CommandPaletteV5.jsx app/page.jsx tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs && git commit -m "feat: add command palette v5"`.
 
-## Task 4: Morphing Desktop Sidebar, Top Bar, and Floating Mobile Dock
+## Task 4: Morphing Navigation, Stable Page Motion, and Toast Feedback
 
 **Interfaces:**
 - `AppShell` owns `sidebarCollapsed` local UI state only; no persistence in this phase.
@@ -129,21 +135,43 @@ test('mission control never invents execution telemetry', () => {
 - `TopBar({ activePage, onOpenCommand, commandEnabled, status })` shows command shortcut only when enabled and real status only when provided.
 - `MobileDock({ activePage, onNavigate, onNewPrompt, onOpenMore })` presents Library, Workspaces, Create, Activity (routes to analytics), More.
 - `CreateActionSheet` exposes New Prompt / New Workflow / Import Prompt; unavailable callbacks render disabled controls rather than fake actions.
+- `<PageTransition activeKey>{children}</PageTransition>` keeps the shell outside the animated boundary. Enter uses opacity 0 -> 1 and y 10 -> 0 in ~200ms; exit uses opacity 1 -> 0 in ~120ms with no full-screen wipe. Enter/exit run concurrently; navigation must not wait for exit completion.
+- `enqueueToast(queue, toast, limit=3)` de-duplicates by `toast.id`, appends newest, and returns only the last `limit` items.
+- `<ToastViewport toasts onDismiss />` renders a max-3 glass stack: desktop top-right, mobile above the dock; each item has an explicit dismiss control.
 
-- [ ] **Step 1: Add RED contract tests** in `tests/navigation-motion-ui.test.mjs` for collapsed/expanded Sidebar props, a shared Motion `layoutId` active indicator, safe-area mobile dock CSS, and disabled create actions when callbacks are absent.
-- [ ] **Step 2: Run RED.** `node --test tests/navigation-motion-ui.test.mjs`.
-- [ ] **Step 3: Update `Sidebar.jsx`.** Replace the current dot-only active state with one shared active rail/background element using `layoutId="v5-nav-active"`; animate width via Motion spring while keeping icons in a fixed-width cell.
-- [ ] **Step 4: Update `TopBar.jsx`.** Reduce technical uppercase density; use breadcrumb/current page and conditionally expose the command button. Preserve TH/EN display until language-control behavior is separately changed.
-- [ ] **Step 5: Update `MobileDock.jsx` and add `CreateActionSheet.jsx`.** Respect `env(safe-area-inset-bottom)`, use Motion active indicator, no hover dependency, and at least 44px tap targets.
-- [ ] **Step 6: Update `AppShell.jsx`.** Manage sidebar collapse and create-sheet open state; keep child page content mounted independently of shell chrome transitions.
-- [ ] **Step 7: Run GREEN.** `node --test tests/navigation-motion-ui.test.mjs tests/feature-flag-integration.test.mjs`.
-- [ ] **Step 8: Commit.** `git add components/shell lib/ui/v5-navigation.mjs tests/navigation-motion-ui.test.mjs && git commit -m "feat: upgrade v5 navigation motion"`.
+- [ ] **Step 1: Add RED navigation/page-transition contract tests** in `tests/navigation-motion-ui.test.mjs` for collapsed/expanded Sidebar props, a shared Motion `layoutId` active indicator, safe-area mobile dock CSS, disabled create actions when callbacks are absent, persistent AppShell outside `PageTransition`, and transition values 10px / 0.20s / 0.12s.
+- [ ] **Step 2: Add RED toast unit tests** in `tests/toast-queue.test.mjs`:
+
+```js
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { enqueueToast } from '../lib/ui/toast-queue.mjs';
+
+test('toast queue keeps at most three newest unique items', () => {
+  let queue = [];
+  for (const id of ['a', 'b', 'c', 'd']) queue = enqueueToast(queue, { id, message: id });
+  assert.deepEqual(queue.map((item) => item.id), ['b', 'c', 'd']);
+  queue = enqueueToast(queue, { id: 'd', message: 'updated' });
+  assert.deepEqual(queue.map((item) => item.id), ['b', 'c', 'd']);
+  assert.equal(queue.at(-1).message, 'updated');
+});
+```
+
+- [ ] **Step 3: Run RED.** `node --test tests/navigation-motion-ui.test.mjs tests/toast-queue.test.mjs`.
+- [ ] **Step 4: Implement `PageTransition.jsx`.** Use `AnimatePresence` without `mode="wait"`; key the inner `motion.div` by `activeKey`, preserve child interactivity, and use reduced-motion fade-only transitions.
+- [ ] **Step 5: Update `Sidebar.jsx`.** Replace the current dot-only active state with one shared active rail/background element using `layoutId="v5-nav-active"`; animate width via Motion spring while keeping icons in a fixed-width cell.
+- [ ] **Step 6: Update `TopBar.jsx`.** Reduce technical uppercase density; use breadcrumb/current page and conditionally expose the command button. Preserve TH/EN display until language-control behavior is separately changed.
+- [ ] **Step 7: Update `MobileDock.jsx` and add `CreateActionSheet.jsx`.** Respect `env(safe-area-inset-bottom)`, use Motion active indicator, no hover dependency, and at least 44px tap targets.
+- [ ] **Step 8: Implement bounded toast primitives.** `lib/ui/toast-queue.mjs` stays pure; `ToastViewport.jsx` is presentational, uses `role="status"` for non-error messages and `role="alert"` for error tone, and never displays more than the three items passed to it.
+- [ ] **Step 9: Update `AppShell.jsx`.** Manage sidebar collapse/create-sheet state, wrap only page content in `PageTransition activeKey={activePage}`, and provide a single ToastViewport mount point. Do not invent notification events in this task; future features pass real toast state/callbacks through an explicit seam.
+- [ ] **Step 10: Run GREEN.** `node --test tests/navigation-motion-ui.test.mjs tests/toast-queue.test.mjs tests/feature-flag-integration.test.mjs`.
+- [ ] **Step 11: Commit.** `git add components/shell components/ui/ToastViewport.jsx lib/ui/v5-navigation.mjs lib/ui/toast-queue.mjs tests/navigation-motion-ui.test.mjs tests/toast-queue.test.mjs && git commit -m "feat: upgrade v5 navigation and feedback motion"`.
 
 ## Task 5: Localization, Accessibility, and Phase Verification
 
-- [ ] **Step 1: Add Thai catalog entries** for Mission Control, Continue Working, Usage, Runs, Copies, Featured Prompt Packs, Prompt Health, Activity, Smart Collections, Search anything, Create, More, New Prompt, New Workflow, Import Prompt, Close, and command-palette empty state.
+- [ ] **Step 1: Add Thai catalog entries** for Mission Control, Continue Working, Usage, Runs, Copies, Featured Prompt Packs, Prompt Health, Activity, Smart Collections, Search anything, Create, More, New Prompt, New Workflow, Import Prompt, Close, Dismiss, and command-palette empty state.
 - [ ] **Step 2: Extend `tests/i18n-coverage.test.mjs`** so each new visible English source label resolves through `translateCatalogThai('th', text)`.
-- [ ] **Step 3: Run targeted accessibility/model tests.** `node --test tests/i18n-coverage.test.mjs tests/command-palette-v5-ui.test.mjs tests/navigation-motion-ui.test.mjs tests/mission-control-ui-contract.test.mjs`.
+- [ ] **Step 3: Run targeted accessibility/model tests.** `node --test tests/i18n-coverage.test.mjs tests/command-palette-v5-ui.test.mjs tests/navigation-motion-ui.test.mjs tests/toast-queue.test.mjs tests/mission-control-ui-contract.test.mjs`.
 - [ ] **Step 4: Run full suite.** `npm test`; confirm 80-prompt regression, Pack reference semantics, Prompt Health, and Legacy fallback remain green.
 - [ ] **Step 5: Build.** `npm run build` and verify `.open-next/worker.js`, `.open-next/assets`, `.open-next/.build/open-next.config.edge.mjs`.
 - [ ] **Step 6: Cloudflare dry-run.** `npx wrangler deploy --dry-run --outdir .wrangler-dry-run`.
