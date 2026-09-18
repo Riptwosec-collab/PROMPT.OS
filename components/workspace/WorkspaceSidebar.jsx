@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import GlassSurface from '../ui/GlassSurface.jsx';
 
 const SMART_VIEWS = [
   ['favorites', 'Favorites'],
@@ -16,8 +17,14 @@ export default function WorkspaceSidebar({ workspace, folders = [], smartCollect
   const visibleFolders = folders.filter((folder) => !folder.archivedAt && String(folder.workspaceId || 'personal') === String(workspaceId));
 
   return (
-    <aside className="v5-glass h-fit rounded-2xl border border-white/10 p-3" data-workspace-sidebar>
-      <div className="mb-3">
+    <GlassSurface
+      as="aside"
+      level="panel"
+      className="relative h-fit overflow-hidden rounded-2xl border border-white/10 p-3 shadow-[0_18px_48px_rgba(0,0,0,0.2)] ring-1 ring-inset ring-white/[0.035]"
+      data-workspace-sidebar
+    >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/30 to-transparent" />
+      <div className="mb-3 rounded-xl border border-white/[0.05] bg-black/10 px-3 py-2.5">
         <p className="text-[10px] font-mono tracking-[0.2em] text-cyan-300/60">WORKSPACE</p>
         <h2 className="mt-1 truncate text-sm font-semibold text-white">{workspace?.name || 'PERSONAL'}</h2>
       </div>
@@ -30,7 +37,7 @@ export default function WorkspaceSidebar({ workspace, folders = [], smartCollect
           {SMART_VIEWS.map(([key, label]) => (
             <NavButton key={key} active={activeView === key} onClick={() => onViewChange?.({ type: 'smart', key })}>
               <span>{label}</span>
-              <span className="font-mono text-[10px] text-slate-600">{smartCollections?.[key]?.length || 0}</span>
+              <span className="rounded-full border border-white/[0.05] bg-black/15 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">{smartCollections?.[key]?.length || 0}</span>
             </NavButton>
           ))}
         </div>
@@ -45,7 +52,7 @@ export default function WorkspaceSidebar({ workspace, folders = [], smartCollect
           ))}
         </div>
       </nav>
-    </aside>
+    </GlassSurface>
   );
 }
 
@@ -54,7 +61,8 @@ function NavButton({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-xs transition ${active ? 'bg-cyan-300/10 text-cyan-100' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}
+      aria-current={active ? 'page' : undefined}
+      className={`flex min-h-9 w-full items-center justify-between gap-2 rounded-lg border px-2 py-2 text-left text-xs transition ${active ? 'border-cyan-200/15 bg-cyan-300/[0.08] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]' : 'border-transparent text-slate-400 hover:border-white/[0.05] hover:bg-white/[0.035] hover:text-slate-200'}`}
     >
       {children}
     </button>
