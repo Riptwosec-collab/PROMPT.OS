@@ -8,6 +8,7 @@ const EXPECTED_FLAGS = [
   'V5_SMART_COLLECTIONS', 'V5_EXECUTION_ENGINE', 'V5_AI_IMPROVE',
   'V5_COST_GUARD', 'V5_PROVIDER_SELECTOR', 'V5_COMMAND_PALETTE',
   'V5_CLOUD_SYNC', 'V5_USAGE_ANALYTICS', 'V5_WORKFLOW', 'V5_VISUAL_SYSTEM',
+  'V5_MISSION_CONTROL',
 ];
 
 test('V5 flags default to false with the complete legacy and granular flag set', () => {
@@ -40,4 +41,10 @@ test('visual system flag is default-off and only explicit true enables it', () =
   assert.equal(readFeatureFlags({}).V5_VISUAL_SYSTEM, false);
   assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_VISUAL_SYSTEM: ' true ' }).V5_VISUAL_SYSTEM, true);
   assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_VISUAL_SYSTEM: '1' }).V5_VISUAL_SYSTEM, false);
+});
+
+test('mission control flag is default-off and only explicit true enables it', () => {
+  assert.equal(readFeatureFlags({}).V5_MISSION_CONTROL, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_MISSION_CONTROL: ' true ' }).V5_MISSION_CONTROL, true);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_MISSION_CONTROL: '1' }).V5_MISSION_CONTROL, false);
 });

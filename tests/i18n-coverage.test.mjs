@@ -31,6 +31,15 @@ const V5_CORE_UI_TEXT = [
   'Continue Working', 'Add all to Workspace', 'No matching prompts',
 ];
 
+const V5_PHASE2_UI_TEXT = [
+  'Mission Control', 'Neo Mission Control', 'AI Usage Pulse', 'Runs', 'Copies',
+  'Featured Prompt Packs', 'Activity', 'Search anything',
+  'Search prompts, commands, workflows', 'Create', 'More', 'New Prompt',
+  'New Workflow', 'Import Prompt', 'Close', 'Dismiss', 'No matching commands',
+  'Choose an action', 'Unavailable', 'Open full Library', 'Command Palette',
+  'Esc to close', 'Notifications',
+];
+
 test('all known user-facing Prompt.OS labels have a Thai rendering', () => {
   const missing = REQUIRED_UI_TEXT.filter((text) => translate('th', text) === text);
   assert.deepEqual(missing, [], `Missing Thai translations: ${missing.join(', ')}`);
@@ -49,6 +58,23 @@ test('V5 core experience source labels resolve through the catalog-aware Thai la
     'components/workspace/WorkspaceSidebar.jsx',
   ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
   for (const label of ['Prompt Library', 'Prompt Variables', 'Rendered Prompt', 'Prompt Health', 'PROMPT PACKS', 'WORKSPACE']) {
+    assert.match(files, new RegExp(label));
+  }
+});
+
+test('Phase 2 Mission Control, command and create surfaces have Thai rendering', () => {
+  const missing = V5_PHASE2_UI_TEXT.filter((text) => translateCatalogThai('th', text) === text);
+  assert.deepEqual(missing, [], `Missing V5 Phase 2 translations: ${missing.join(', ')}`);
+
+  const files = [
+    'components/home/MissionControl.jsx',
+    'components/command/CommandPaletteV5.jsx',
+    'components/shell/TopBar.jsx',
+    'components/shell/MobileDock.jsx',
+    'components/shell/CreateActionSheet.jsx',
+    'components/ui/ToastViewport.jsx',
+  ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
+  for (const label of ['Neo Mission Control', 'AI Usage Pulse', 'Featured Prompt Packs', 'No matching commands', 'New Workflow', 'Dismiss']) {
     assert.match(files, new RegExp(label));
   }
 });

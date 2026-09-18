@@ -25,6 +25,8 @@
   --v5-focus-ring: 0 0 0 3px rgba(139, 233, 255, 0.28);
   --pointer-x: 50vw;
   --pointer-y: 30vh;
+  --spotlight-x: 50%;
+  --spotlight-y: 50%;
 }
 
 html,
@@ -126,6 +128,117 @@ select {
   background: radial-gradient(circle 220px at var(--pointer-x) var(--pointer-y), rgba(139, 233, 255, 0.08), transparent 72%);
 }
 
+.v5-pointer-spotlight {
+  --spotlight-x: 50%;
+  --spotlight-y: 50%;
+  position: relative;
+  isolation: isolate;
+}
+
+.v5-pointer-spotlight::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle 260px at var(--spotlight-x) var(--spotlight-y), rgba(139, 233, 255, 0.12), transparent 68%),
+    radial-gradient(circle 420px at 78% 4%, rgba(167, 139, 250, 0.08), transparent 70%);
+  opacity: 0.85;
+}
+
+.v5-pointer-spotlight > * {
+  position: relative;
+  z-index: 1;
+}
+
+.v5-neo-hero {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 28px 90px rgba(0, 0, 0, 0.32),
+    0 0 70px rgba(103, 232, 249, 0.035);
+}
+
+.v5-magnetic-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.v5-magnetic-inner {
+  display: inline-flex;
+  will-change: transform;
+  transition: transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.v5-neo-pack-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease;
+}
+
+.v5-neo-pack-card:hover,
+.v5-neo-pack-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(139, 233, 255, 0.28);
+}
+
+.v5-command-spotlight::before {
+  background:
+    radial-gradient(circle 220px at var(--spotlight-x) var(--spotlight-y), rgba(139, 233, 255, 0.14), transparent 64%),
+    radial-gradient(circle 360px at 80% 0%, rgba(167, 139, 250, 0.09), transparent 72%);
+  opacity: 0.92;
+}
+
+.v5-command-selected {
+  box-shadow:
+    inset 3px 0 0 rgba(139, 233, 255, 0.65),
+    inset 0 0 28px rgba(103, 232, 249, 0.025);
+}
+
+.v5-nav-active {
+  background:
+    linear-gradient(90deg, rgba(103, 232, 249, 0.11), rgba(167, 139, 250, 0.045));
+  border: 1px solid rgba(139, 233, 255, 0.12);
+  box-shadow: inset 0 0 24px rgba(103, 232, 249, 0.025);
+}
+
+.v5-nav-active::before {
+  content: '';
+  position: absolute;
+  inset: 7px auto 7px 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(139, 233, 255, 0.82);
+  box-shadow: 0 0 14px rgba(103, 232, 249, 0.36);
+}
+
+.v5-nav-icon-cell {
+  min-width: 2.25rem;
+  color: inherit;
+}
+
+.v5-mobile-dock {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  background:
+    linear-gradient(120deg, rgba(8, 15, 29, 0.82), rgba(19, 12, 35, 0.70));
+  -webkit-backdrop-filter: blur(22px);
+  backdrop-filter: blur(22px);
+}
+
+.v5-mobile-active {
+  border: 1px solid rgba(139, 233, 255, 0.18);
+  background: linear-gradient(135deg, rgba(103, 232, 249, 0.10), rgba(167, 139, 250, 0.06));
+  box-shadow: inset 0 -1px 18px rgba(167, 139, 250, 0.025);
+}
+
+.v5-mobile-create {
+  border: 1px solid rgba(207, 250, 254, 0.55);
+}
+
+.v5-toast-viewport {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+
 @keyframes v5-aurora-a {
   to {
     transform: translate3d(3%, -2%, 0) scale(1.05);
@@ -145,10 +258,46 @@ select {
   min-height: 0 !important;
 }
 
+@media (min-width: 768px) {
+  .v5-toast-viewport {
+    bottom: auto;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .v5-pointer-spotlight::before {
+    opacity: 0.85;
+  }
+
+  .v5-command-spotlight::before {
+    opacity: 0.92;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .v5-pointer-spotlight::before {
+    opacity: 0;
+  }
+
+  .v5-magnetic-inner {
+    transform: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .v5-aurora::before,
   .v5-aurora::after {
     animation: none !important;
+  }
+
+  .v5-pointer-spotlight::before {
+    opacity: 0;
+  }
+
+  .v5-magnetic-inner,
+  .v5-neo-pack-card,
+  .v5-mobile-create {
+    transform: none !important;
   }
 
   *,

@@ -5,81 +5,33 @@ import PromptSearch from './PromptSearch.jsx';
 import PromptDetailV2 from './PromptDetailV2.jsx';
 import PromptPacks from './PromptPacks.jsx';
 import WorkspaceSidebar from '../workspace/WorkspaceSidebar.jsx';
-import { AI_PROMPT_LIBRARY, PROMPT_CATALOG_VERSION, mergePromptCatalog } from '../../lib/prompts/ai-prompt-library.mjs';
-import { migratePromptState } from '../../lib/prompts/state-migration.mjs';
+import { AI_PROMPT_LIBRARY } from '../../lib/prompts/ai-prompt-library.mjs';
 import { buildSmartCollections } from '../../lib/prompts/smart-collections.mjs';
 import { createPack } from '../../lib/prompts/packs.mjs';
+import {
+  loadPromptCatalogState,
+  persistPromptCatalogState,
+} from '../../lib/prompts/client-store.mjs';
+import { buildDefaultPacks } from '../../lib/prompts/default-packs.mjs';
 import { normalizeWorkspaceState } from '../../lib/workspace/model.mjs';
 import { searchPrompts } from '../../lib/search/prompt-search.mjs';
 
 const STORAGE_KEY = 'promptVaultData';
 
-const DEFAULT_PACKS = [
-  ['network-engineer', 'Network Engineer', ['NETWORK_TROUBLESHOOTER', 'INCIDENT_TRIAGE_COORDINATOR', 'RUNBOOK_GENERATOR', 'NETWORK_CHANGE_RISK_REVIEWER', 'CLOUD_ARCHITECTURE_REVIEWER']],
-  ['research', 'Research', ['DEEP_RESEARCH_ASSISTANT', 'FACT_CHECKER', 'SOURCE_COMPARATOR', 'RESEARCH_QUESTION_REFINER', 'LITERATURE_SYNTHESIS_MATRIX']],
-  ['developer', 'Developer', ['CODE_REVIEWER', 'BUG_HUNTER', 'API_DESIGNER', 'DATABASE_SCHEMA_DESIGNER', 'CI_CD_PIPELINE_REVIEWER']],
-];
-
-function readStoredDatabase() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadPrompts() {
-  if (typeof window === 'undefined') return AI_PROMPT_LIBRARY;
-  try {
-    const parsed = readStoredDatabase();
-    const localPrompts = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.prompts) ? parsed.prompts : [];
-    const merged = mergePromptCatalog(localPrompts, AI_PROMPT_LIBRARY);
-    const migration = migratePromptState(merged);
-    return migration.ok ? migration.prompts : merged;
-  } catch (error) {
-    console.error('Failed to load V5 prompt library', error);
-    return AI_PROMPT_LIBRARY;
-  }
-}
-
-function persistPrompts(prompts) {
-  if (typeof window === 'undefined') return;
-  try {
-    const existing = readStoredDatabase();
-    const base = existing && !Array.isArray(existing) && typeof existing === 'object' ? existing : {};
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      ...base,
-      schemaVersion: Math.max(Number(base.schemaVersion || 0), 5),
-      catalogVersion: PROMPT_CATALOG_VERSION,
-      prompts,
-      updatedAt: new Date().toISOString(),
-    }));
-  } catch (error) {
-    console.error('Failed to persist V5 prompt library', error);
-  }
+function browserStorage() {
+  return typeof window === 'undefined' ? null : window.localStorage;
 }
 
 function uniqueValues(prompts, key) {
   return [...new Set(prompts.map((prompt) => prompt?.[key]).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
 }
 
-function defaultPacksFor(prompts) {
-  const byName = new Map(prompts.map((prompt) => [prompt.name, prompt.id]));
-  return DEFAULT_PACKS.map(([id, name, names]) => createPack({
-    id,
-    name,
-    promptIds: names.map((promptName) => byName.get(promptName)).filter((value) => value !== undefined),
-  }));
-}
-
-function loadOrganization(prompts) {
-  const stored = readStoredDatabase();
-  const workspaceState = normalizeWorkspaceState(stored && !Array.isArray(stored) ? stored : {});
-  const packs = Array.isArray(stored?.promptPacks)
-    ? stored.promptPacks.map((pack) => createPack(pack))
-    : defaultPacksFor(prompts);
+function loadOrganization(prompts, stored) {
+  const database = stored && !Array.isArray(stored) && typeof stored === 'object' ? stored : {};
+  const workspaceState = normalizeWorkspaceState(database);
+  const packs = Array.isArray(database.promptPacks)
+    ? database.promptPacks.map((pack) => createPack(pack))
+    : buildDefaultPacks(prompts);
   return { workspaceState, packs };
 }
 
@@ -89,6 +41,8 @@ export default function PromptLibraryV5({
   healthEnabled = false,
   workspaceEnabled = false,
   smartCollectionsEnabled = false,
+  externalRequest = null,
+  onExternalRequestHandled,
   onOpenPrompt,
   onRunPrompt,
 }) {
@@ -97,15 +51,17 @@ export default function PromptLibraryV5({
   const [filters, setFilters] = useState({});
   const [selectedPromptId, setSelectedPromptId] = useState(null);
   const [activeView, setActiveView] = useState('all');
+  const [hydrated, setHydrated] = useState(false);
   const [organization, setOrganization] = useState(() => ({
     workspaceState: normalizeWorkspaceState({}),
-    packs: defaultPacksFor(AI_PROMPT_LIBRARY),
+    packs: buildDefaultPacks(AI_PROMPT_LIBRARY),
   }));
 
   useEffect(() => {
-    const loadedPrompts = loadPrompts();
+    const { prompts: loadedPrompts, database } = loadPromptCatalogState(browserStorage(), AI_PROMPT_LIBRARY, STORAGE_KEY);
     setPrompts(loadedPrompts);
-    setOrganization(loadOrganization(loadedPrompts));
+    setOrganization(loadOrganization(loadedPrompts, database));
+    setHydrated(true);
   }, []);
 
   const categories = useMemo(() => uniqueValues(prompts, 'category'), [prompts]);
@@ -142,10 +98,26 @@ export default function PromptLibraryV5({
     if (detailEnabled) setSelectedPromptId(id);
   };
 
+  useEffect(() => {
+    if (!hydrated || !externalRequest) return;
+
+    if (externalRequest.type === 'prompt') {
+      const target = prompts.find((prompt) => String(prompt.id) === String(externalRequest.id));
+      if (target) openPrompt(target.id);
+      onExternalRequestHandled?.();
+      return;
+    }
+
+    if (externalRequest.type === 'view' && typeof externalRequest.viewId === 'string') {
+      setActiveView(externalRequest.viewId);
+      onExternalRequestHandled?.();
+    }
+  }, [hydrated, externalRequest, prompts, detailEnabled, onExternalRequestHandled]);
+
   const patchPrompt = (id, patch) => {
     setPrompts((current) => {
       const next = current.map((prompt) => String(prompt.id) === String(id) ? { ...prompt, ...patch, updatedAt: new Date().toISOString() } : prompt);
-      persistPrompts(next);
+      persistPromptCatalogState(browserStorage(), next, null, STORAGE_KEY);
       return next;
     });
   };
@@ -154,7 +126,7 @@ export default function PromptLibraryV5({
     const ids = new Set((promptIds || []).map(String));
     setPrompts((current) => {
       const next = current.map((prompt) => ids.has(String(prompt.id)) ? { ...prompt, workspaceId: workspace?.id || 'personal' } : prompt);
-      persistPrompts(next);
+      persistPromptCatalogState(browserStorage(), next, null, STORAGE_KEY);
       return next;
     });
   };

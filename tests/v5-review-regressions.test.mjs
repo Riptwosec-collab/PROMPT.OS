@@ -29,13 +29,18 @@ test('composite ownership foreign keys only null the nullable id column', () => 
   assert.match(sql, /on delete set null\s*\(evaluation_run_id\)/i);
 });
 
-test('V5 shell respects feature flags and mobile add is not a dead control', () => {
+test('V5 shell respects feature flags and mobile create remains a live routed control', () => {
   const page = read('app/page.jsx');
   const dock = read('components/shell/MobileDock.jsx');
+  const shell = read('components/shell/AppShell.jsx');
+  const sheet = read('components/shell/CreateActionSheet.jsx');
   assert.match(page, /V5_FEATURE_FLAGS/);
   assert.match(page, /Object\.values\(V5_FEATURE_FLAGS\)\.some\(Boolean\)/);
   assert.match(page, /if \(!v5ShellEnabled\)/);
-  assert.match(dock, /disabled=\{isNew && !onNewPrompt\}/);
+  assert.match(dock, /if \(isCreate\) onNewPrompt\?\.\(\)/);
+  assert.match(shell, /onNewPrompt=\{\(\) => setCreateSheetOpen\(true\)\}/);
+  assert.match(shell, /<CreateActionSheet/);
+  assert.match(sheet, /disabled=\{!callback\}/);
 });
 
 test('Legacy PromptOS wires V5 migration and shared selectors without removing fallback', () => {
