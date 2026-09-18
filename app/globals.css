@@ -275,6 +275,13 @@ select {
   z-index: 1;
 }
 
+.v5-card-quick-actions {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
 @keyframes v5-aurora-a {
   to {
     transform: translate3d(3%, -2%, 0) scale(1.05);
@@ -312,6 +319,19 @@ select {
   .v5-premium-card {
     will-change: transform;
   }
+
+  .v5-card-quick-actions {
+    opacity: 0;
+    transform: translateY(4px);
+    pointer-events: none;
+  }
+
+  .v5-premium-card:hover .v5-card-quick-actions,
+  .v5-premium-card:focus-within .v5-card-quick-actions {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
 }
 
 @media (hover: none), (pointer: coarse) {
@@ -325,6 +345,12 @@ select {
 
   .v5-premium-card {
     --card-pointer-strength: 0 !important;
+  }
+
+  .v5-card-quick-actions {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
   }
 }
 
@@ -347,6 +373,12 @@ select {
   .v5-premium-card {
     --card-pointer-strength: 0 !important;
     transform: none !important;
+  }
+
+  .v5-card-quick-actions {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
   }
 
   *,
