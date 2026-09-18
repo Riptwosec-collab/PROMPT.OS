@@ -4,7 +4,7 @@
 
 **Goal:** Build the Mission Control home, morphing desktop navigation, floating mobile dock, and first-class command palette on top of the Phase 1 visual/motion foundation without fabricating usage or sync telemetry.
 
-**Architecture:** Reuse the existing prompt catalog/state and command ranking logic. Extract shared browser prompt-state loading from `PromptLibraryV5` so Mission Control and Library read the same records; render data-driven Home sections only when real data exists. Navigation remains controlled by `app/page.jsx`, while Motion handles chrome transitions and the existing `V5_COMMAND_PALETTE` flag controls command capability.
+**Architecture:** Reuse the existing prompt catalog/state, prompt health scorer, pack model, smart collections, and command ranking logic. Extract shared browser prompt-state loading and default-pack construction from `PromptLibraryV5` so Mission Control and Library consume the same records and pack references; render Home sections only from real local state. Navigation remains controlled by `app/page.jsx`, while Motion handles chrome transitions and the existing `V5_COMMAND_PALETTE` flag controls command capability.
 
 **Tech Stack:** Next 16.3.5, React 19.3.0, Tailwind 4.3.3, Motion for React, Node test runner.
 
@@ -13,12 +13,13 @@
 ## Global Constraints
 
 - Phase 1 Visual + Motion Foundation must be merged first.
-- Add only `V5_MISSION_CONTROL`; reuse existing `V5_COMMAND_PALETTE`, `V5_WORKSPACE`, `V5_CLOUD_SYNC`, and `V5_USAGE_ANALYTICS` flags.
+- Add only `V5_MISSION_CONTROL`; reuse existing `V5_COMMAND_PALETTE`, `V5_WORKSPACE`, `V5_CLOUD_SYNC`, `V5_USAGE_ANALYTICS`, `V5_PROMPT_HEALTH`, and `V5_SMART_COLLECTIONS` flags.
 - All flags default false.
 - Mission Control must not display made-up tokens, cost, latency, success rate, or cloud sync state.
 - Empty sections disappear instead of showing fake fixture values.
 - Legacy PromptOS and Library fallback remain available.
 - Existing prompt records remain single-source and the built-in catalog remains exactly 80.
+- Prompt Packs remain reference-only; default pack extraction must not clone prompt records.
 - No production DB migration or production deploy.
 
 ---
@@ -27,6 +28,7 @@
 
 **Create**
 - `lib/prompts/client-store.mjs` — shared local browser database parsing/merge/migration helpers.
+- `lib/prompts/default-packs.mjs` — default pack blueprints and reference-only resolver shared by Home and Library.
 - `lib/home/mission-control.mjs` — pure Mission Control selectors/view model.
 - `lib/ui/command-items.mjs` — maps navigation/prompts/actions into the existing command-ranking shape.
 - `components/home/MissionControl.jsx`
@@ -50,48 +52,56 @@
 - `lib/i18n/catalog-th.mjs`
 - `tests/i18n-coverage.test.mjs`
 
-## Task 1: Shared Prompt Client Store and Mission Control View Model
+## Task 1: Shared Prompt Client Store, Default Packs, and Mission Control View Model
 
 **Interfaces:**
 - `readStoredPromptDatabase(storage, key='promptVaultData') -> object|array|null`.
 - `loadPromptCatalogState(storage, catalog) -> { prompts, database }`; it merges catalog data and runs existing V5 migration.
 - `persistPromptCatalogState(storage, prompts, baseDatabase) -> void` preserves unrelated database fields and writes schema/catalog version.
-- `buildMissionControlModel(prompts, { now }) -> { continueWorking, featured, smartCollections, usage }`.
-- `usage` contains only metrics derivable from real records: `runs`, `copies`; unsupported token/cost/latency fields are absent, not zero-filled.
+- `DEFAULT_PACK_BLUEPRINTS` contains the existing Network Engineer, Research, and Developer name-based definitions.
+- `buildDefaultPacks(prompts) -> Pack[]` resolves prompt IDs and delegates pack construction to existing `createPack`; no prompt object cloning.
+- `buildMissionControlModel(prompts, { now, packs }) -> { continueWorking, featuredPacks, smartCollections, usage, healthSummary, activity }`.
+- `usage` contains only metrics derivable from real prompt records: `runs`, `copies`; unsupported token/cost/latency fields are absent, not zero-filled.
+- `healthSummary` is `{ average, analyzedCount }`, calculated with the existing deterministic `scorePromptHealth` over actual prompts.
+- `activity` is derived only from prompts that already have real recent-use timestamps; no synthetic events.
 
-- [ ] **Step 1: Write RED tests** in `tests/mission-control.test.mjs` for corrupted JSON fallback, catalog merge, recent prompt ordering, empty recent section, and absence of unsupported telemetry:
+- [ ] **Step 1: Write RED tests** in `tests/mission-control.test.mjs` for corrupted JSON fallback, catalog merge, default-pack reference semantics, recent prompt ordering, empty recent/activity sections, deterministic health average, and absence of unsupported telemetry:
 
 ```js
 test('mission control never invents execution telemetry', () => {
-  const model = buildMissionControlModel([{ id: 1, name: 'A', runs: 2, copyCount: 3 }], { now: new Date('2026-09-18T00:00:00Z') });
+  const model = buildMissionControlModel([{ id: 1, name: 'A', prompt: 'Role: expert\nTask: test\nOutput: list', runs: 2, copyCount: 3 }], {
+    now: new Date('2026-09-18T00:00:00Z'),
+    packs: [],
+  });
   assert.equal(model.usage.runs, 2);
   assert.equal(model.usage.copies, 3);
   assert.equal('tokens' in model.usage, false);
   assert.equal('cost' in model.usage, false);
   assert.equal('latency' in model.usage, false);
+  assert.equal(model.healthSummary.analyzedCount, 1);
 });
 ```
 
 - [ ] **Step 2: Run RED.** `node --test tests/mission-control.test.mjs`.
-- [ ] **Step 3: Move the local-store logic** currently private to `PromptLibraryV5.jsx` into `lib/prompts/client-store.mjs`. Accept a Storage-like object as an argument so unit tests do not require `window`.
-- [ ] **Step 4: Update `PromptLibraryV5.jsx`** to call the extracted functions with `window.localStorage`; behavior and storage key stay unchanged.
-- [ ] **Step 5: Implement `buildMissionControlModel`.** Reuse `buildSmartCollections`; select at most 2 `recentlyUsed` records for Continue Working; derive featured prompts deterministically from highest usage then catalog order; expose real run/copy totals only.
-- [ ] **Step 6: Run GREEN plus storage regressions.** `node --test tests/mission-control.test.mjs tests/v5-core-ui-contract.test.mjs tests/smart-collections.test.mjs`.
-- [ ] **Step 7: Commit.** `git add lib/prompts/client-store.mjs lib/home/mission-control.mjs components/prompt/PromptLibraryV5.jsx tests/mission-control.test.mjs && git commit -m "refactor: share prompt state with mission control"`.
+- [ ] **Step 3: Move shared local-store and default-pack logic** currently private to `PromptLibraryV5.jsx` into `lib/prompts/client-store.mjs` and `lib/prompts/default-packs.mjs`. Accept a Storage-like object in store helpers so unit tests do not require `window`.
+- [ ] **Step 4: Update `PromptLibraryV5.jsx`** to call the extracted store/default-pack functions; storage key, catalog merge, migrations, and Pack behavior stay unchanged.
+- [ ] **Step 5: Implement `buildMissionControlModel`.** Reuse `buildSmartCollections` and `scorePromptHealth`; select at most 2 `recentlyUsed` records for Continue Working; pass through resolved reference-only packs; build activity from actual recent-use timestamps; expose real run/copy totals only.
+- [ ] **Step 6: Run GREEN plus regressions.** `node --test tests/mission-control.test.mjs tests/v5-core-ui-contract.test.mjs tests/smart-collections.test.mjs tests/prompt-health-v2.test.mjs`.
+- [ ] **Step 7: Commit.** `git add lib/prompts/client-store.mjs lib/prompts/default-packs.mjs lib/home/mission-control.mjs components/prompt/PromptLibraryV5.jsx tests/mission-control.test.mjs && git commit -m "refactor: share prompt state with mission control"`.
 
-## Task 2: Add Mission Control Flag and Home Surface
+## Task 2: Add Mission Control Flag and Complete Home Surface
 
 **Interfaces:**
 - `V5_MISSION_CONTROL` is strict/default-off.
-- `<MissionControl onOpenCommand onOpenPrompt onNavigate cloudStatus usageEnabled />` reads shared local prompt state on mount.
-- Home sections: Hero Command Bar, Continue Working, Usage Pulse when real metrics exist, Featured Packs/Prompts, Prompt Health summary, Smart Collections; cloud status appears only when `cloudStatus` is non-null.
+- `<MissionControl onOpenCommand onOpenPrompt onNavigate cloudStatus usageEnabled healthEnabled smartCollectionsEnabled />` reads the shared local prompt state on mount and resolves default packs with `buildDefaultPacks`.
+- Required sections: Hero Command Bar; Continue Working when non-empty; AI Usage Pulse only when `usageEnabled` and real run/copy metrics exist; Featured Prompt Packs; Cloud/Sync only when a real `cloudStatus` is supplied; Prompt Health Summary only when `healthEnabled`; Activity Timeline when real activity exists; Smart Collections only when `smartCollectionsEnabled`.
 
 - [ ] **Step 1: Extend `tests/feature-flags.test.mjs`** with `V5_MISSION_CONTROL` and a strict true/default-off assertion.
-- [ ] **Step 2: Add RED UI contract** `tests/mission-control-ui-contract.test.mjs` that asserts the component includes `Search prompts, commands, workflows`, `Continue Working`, `Smart Collections`, and conditionally renders telemetry rather than hard-coding token/cost/latency values.
+- [ ] **Step 2: Add RED UI contract** `tests/mission-control-ui-contract.test.mjs` asserting the component includes `Search prompts, commands, workflows`, `Continue Working`, `Featured Prompt Packs`, `Prompt Health`, `Activity`, and `Smart Collections`, while telemetry/cloud sections are conditional rather than hard-coded.
 - [ ] **Step 3: Run RED.** `node --test tests/feature-flags.test.mjs tests/mission-control-ui-contract.test.mjs`.
 - [ ] **Step 4: Add `V5_MISSION_CONTROL`** to `lib/ui/feature-flags.mjs` and environment mapping.
-- [ ] **Step 5: Implement `MissionControl.jsx`.** Use `GlassSurface`, `GlassGlyph`, `MetricChip`, `AnimatedNumber`, and Motion layout primitives from Phase 1. Hero command bar calls `onOpenCommand`; cards call explicit callbacks. Hide Continue Working when empty and hide each unsupported telemetry chip.
-- [ ] **Step 6: Wire Home in `app/page.jsx`.** When `V5_MISSION_CONTROL` is true and `activePage==='home'`, render Mission Control. Initial page is `home` only when the flag is true; otherwise retain current `library` initial behavior so enabling unrelated V5 flags never lands users on a placeholder Home.
+- [ ] **Step 5: Implement `MissionControl.jsx`.** Use `GlassSurface`, `GlassGlyph`, `MetricChip`, `AnimatedNumber`, and Motion layout primitives from Phase 1. Render the three resolved default packs as showcase cards with CSS/SVG micrographics. Hero command bar calls `onOpenCommand`; prompt cards call explicit callbacks. Hide every empty/disabled section.
+- [ ] **Step 6: Wire Home in `app/page.jsx`.** When `V5_MISSION_CONTROL` is true and `activePage==='home'`, render Mission Control. Initial page is `home` only when the flag is true; otherwise retain current `library` initial behavior so enabling unrelated V5 flags never lands users on placeholder Home. Pass `healthEnabled` from `V5_PROMPT_HEALTH`, `smartCollectionsEnabled` from `V5_SMART_COLLECTIONS`, and `usageEnabled` from `V5_USAGE_ANALYTICS`. Pass `cloudStatus=null` until a real cloud-sync state seam is available; do not reuse the current preview shell status as cloud telemetry.
 - [ ] **Step 7: Run GREEN.** `node --test tests/feature-flags.test.mjs tests/mission-control.test.mjs tests/mission-control-ui-contract.test.mjs tests/v5-core-ui-contract.test.mjs`.
 - [ ] **Step 8: Commit.** `git add lib/ui/feature-flags.mjs tests/feature-flags.test.mjs components/home/MissionControl.jsx app/page.jsx tests/mission-control-ui-contract.test.mjs && git commit -m "feat: add mission control home"`.
 
@@ -107,7 +117,7 @@ test('mission control never invents execution telemetry', () => {
 - [ ] **Step 3: Run RED.** `node --test tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs`.
 - [ ] **Step 4: Implement `lib/ui/command-items.mjs`.** Navigation actions return `{ type: 'navigate', page }`; prompt actions return `{ type: 'prompt', promptId }`; action entries preserve their explicit action payload.
 - [ ] **Step 5: Implement `CommandPaletteV5.jsx`.** On open, save `document.activeElement`, focus the search input, rank with the existing model, clamp selection after result changes, execute selected item on Enter, close on Escape, and restore prior focus on close. Use Motion spring on desktop and a full-screen sheet breakpoint on mobile.
-- [ ] **Step 6: Wire `Ctrl/Meta+K` in `app/page.jsx`.** Register one document keydown listener only when `V5_COMMAND_PALETTE` is enabled; use `shouldHandleShortcut`. Slash-to-search remains a later Library interaction unless existing Search V2 already exposes a focus seam.
+- [ ] **Step 6: Wire `Ctrl/Meta+K` in `app/page.jsx`.** Register one document keydown listener only when `V5_COMMAND_PALETTE` is enabled; use `shouldHandleShortcut`. Slash-to-search is handled by the Premium Prompt phase where a Library search ref exists.
 - [ ] **Step 7: Run GREEN.** `node --test tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs`.
 - [ ] **Step 8: Commit.** `git add lib/ui/command-items.mjs components/command/CommandPaletteV5.jsx app/page.jsx tests/command-palette.test.mjs tests/command-palette-v5-ui.test.mjs && git commit -m "feat: add command palette v5"`.
 
@@ -131,10 +141,10 @@ test('mission control never invents execution telemetry', () => {
 
 ## Task 5: Localization, Accessibility, and Phase Verification
 
-- [ ] **Step 1: Add Thai catalog entries** for Mission Control, Continue Working, Usage, Runs, Copies, Smart Collections, Search anything, Create, Activity, More, New Prompt, New Workflow, Import Prompt, Close, and command-palette empty state.
+- [ ] **Step 1: Add Thai catalog entries** for Mission Control, Continue Working, Usage, Runs, Copies, Featured Prompt Packs, Prompt Health, Activity, Smart Collections, Search anything, Create, More, New Prompt, New Workflow, Import Prompt, Close, and command-palette empty state.
 - [ ] **Step 2: Extend `tests/i18n-coverage.test.mjs`** so each new visible English source label resolves through `translateCatalogThai('th', text)`.
 - [ ] **Step 3: Run targeted accessibility/model tests.** `node --test tests/i18n-coverage.test.mjs tests/command-palette-v5-ui.test.mjs tests/navigation-motion-ui.test.mjs tests/mission-control-ui-contract.test.mjs`.
-- [ ] **Step 4: Run full suite.** `npm test`; confirm 80-prompt regression and Legacy fallback remain green.
+- [ ] **Step 4: Run full suite.** `npm test`; confirm 80-prompt regression, Pack reference semantics, Prompt Health, and Legacy fallback remain green.
 - [ ] **Step 5: Build.** `npm run build` and verify `.open-next/worker.js`, `.open-next/assets`, `.open-next/.build/open-next.config.edge.mjs`.
 - [ ] **Step 6: Cloudflare dry-run.** `npx wrangler deploy --dry-run --outdir .wrangler-dry-run`.
 - [ ] **Step 7: Scope audit.** Run `git diff --name-only "$(git merge-base main HEAD)"...HEAD`; confirm no Supabase migration, provider implementation, or prompt catalog content changed.
