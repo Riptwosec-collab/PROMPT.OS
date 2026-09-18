@@ -18,3 +18,13 @@ test('visual primitives expose approved glass and motion contracts', () => {
   assert.equal(/setState\(/.test(aurora), false);
   assert.match(button, /focus-visible/);
 });
+
+test('visual system is separately gated and legacy shell path remains', () => {
+  const page = read('app/page.jsx');
+  const shell = read('components/shell/AppShell.jsx');
+  assert.match(page, /V5_VISUAL_SYSTEM/);
+  assert.match(page, /visualSystemEnabled=/);
+  assert.match(shell, /visualSystemEnabled = false/);
+  assert.match(shell, /AuroraBackground/);
+  assert.match(shell, /v5-ambient/);
+});
