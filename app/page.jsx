@@ -116,6 +116,8 @@ export default function HomePage() {
   const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);
   const v5MissionControlEnabled = Boolean(V5_FEATURE_FLAGS.V5_MISSION_CONTROL);
   const v5UsageAnalyticsEnabled = Boolean(V5_FEATURE_FLAGS.V5_USAGE_ANALYTICS);
+  const v5PremiumCardsEnabled = Boolean(V5_FEATURE_FLAGS.V5_PREMIUM_CARDS);
+  const v5SharedPromptTransitionEnabled = Boolean(V5_FEATURE_FLAGS.V5_SHARED_PROMPT_TRANSITION);
 
   if (!v5ShellEnabled) {
     return (
@@ -155,6 +157,8 @@ export default function HomePage() {
                 healthEnabled={v5PromptHealthEnabled}
                 workspaceEnabled={v5WorkspaceEnabled}
                 smartCollectionsEnabled={v5SmartCollectionsEnabled}
+                premiumCardsEnabled={v5PremiumCardsEnabled}
+                sharedTransitionEnabled={v5PromptDetailEnabled && v5SharedPromptTransitionEnabled}
                 externalRequest={libraryRequest}
                 onExternalRequestHandled={clearLibraryRequest}
               />
