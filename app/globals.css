@@ -107,6 +107,11 @@ select {
   animation: v5-aurora-b 18s ease-in-out infinite alternate;
 }
 
+.v5-aurora[data-paused='true']::before,
+.v5-aurora[data-paused='true']::after {
+  animation-play-state: paused;
+}
+
 .v5-pointer-light {
   background: radial-gradient(circle 220px at var(--pointer-x) var(--pointer-y), rgba(139, 233, 255, 0.08), transparent 72%);
 }
