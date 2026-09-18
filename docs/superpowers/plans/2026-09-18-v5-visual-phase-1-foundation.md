@@ -170,6 +170,6 @@ test('visual system is separately gated and legacy shell path remains', () => {
 - [ ] **Step 3: Verify OpenNext artifacts.** `test -f .open-next/worker.js && test -d .open-next/assets && test -f .open-next/.build/open-next.config.edge.mjs`.
 - [ ] **Step 4: Run Cloudflare dry-run.** `npx wrangler deploy --dry-run --outdir .wrangler-dry-run`. Expected: successful bundle processing and dry-run exit.
 - [ ] **Step 5: Verify the default-off path.** Run the feature-flag tests and inspect `app/page.jsx` to confirm no direct env reads and no visual-system activation without `NEXT_PUBLIC_V5_VISUAL_SYSTEM=true`.
-- [ ] **Step 6: Verify no forbidden scope.** `git diff --name-only <phase-base>...HEAD` must contain no Supabase migration, provider adapter, prompt catalog content, or deployment-secret changes.
+- [ ] **Step 6: Verify no forbidden scope.** Run `git diff --name-only "$(git merge-base main HEAD)"...HEAD`; the changed-file list must contain no Supabase migration, provider adapter, prompt catalog content, or deployment-secret changes.
 - [ ] **Step 7: Commit verification-only changes if any tests/docs changed.** Use `git commit -m "test: verify visual motion foundation"` only when there are tracked verification edits.
 - [ ] **Step 8: Open a Phase 1 PR and stop before merge.** The PR body must record exact test count, build result, Wrangler dry-run result, feature flag default state, and that no production deploy or DB DDL occurred. Merge requires a separate explicit `merge` authorization.
