@@ -45,3 +45,16 @@ test('legacy glass styling stays unchanged until the visual system gate is enabl
   );
   assert.match(shell, /v5-visual-enabled/);
 });
+
+test('aurora pointer glow uses viewport coordinates while drift layers remain oversized', () => {
+  const css = read('app/globals.css');
+
+  assert.match(
+    css,
+    /\.v5-aurora\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?inset:\s*0;[\s\S]*?background:\s*radial-gradient\(circle 280px at var\(--pointer-x\) var\(--pointer-y\)/,
+  );
+  assert.match(
+    css,
+    /\.v5-aurora::before,\s*\.v5-aurora::after\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?inset:\s*-12%;[\s\S]*?will-change:\s*transform, opacity;/,
+  );
+});
