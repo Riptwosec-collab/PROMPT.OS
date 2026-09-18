@@ -25,8 +25,9 @@ test('page opens command palette from fresh prompt state and reuses library requ
   assert.match(page, /V5_COMMAND_PALETTE/);
   assert.match(page, /shouldHandleShortcut/);
   assert.match(page, /ctrlKey|metaKey/);
-  assert.match(page, /type:\s*['"]prompt['"]/);
-  assert.match(page, /type:\s*['"]navigate['"]/);
+  assert.match(page, /setLibraryRequest\(\{\s*type:\s*['"]prompt['"],\s*id/);
+  assert.match(page, /action\.type === ['"]prompt['"][\s\S]*openLibraryPrompt\(action\.promptId\)/);
+  assert.match(page, /action\.type === ['"]navigate['"][\s\S]*navigate\(action\.page\)/);
 });
 
 test('neo command palette uses a focused spotlight surface without magnetic row movement', () => {
