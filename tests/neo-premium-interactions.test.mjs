@@ -49,3 +49,16 @@ test('shared detail transition uses restrained shared identities with fade fallb
   assert.match(detail, /useReducedMotion/);
   assert.equal(/rotateX|rotateY|perspective/.test(detail), false);
 });
+
+test('prompt support surfaces reuse static Phase 1 glass primitives without decorative loops', () => {
+  const paths = [
+    'components/prompt/PromptHealth.jsx',
+    'components/prompt/PromptPacks.jsx',
+    'components/workspace/WorkspaceSidebar.jsx',
+  ];
+  for (const path of paths) {
+    const source = fs.readFileSync(path, 'utf8');
+    assert.match(source, /GlassSurface/, `${path} should reuse the Phase 1 glass surface primitive`);
+    assert.equal(/repeat\s*:\s*Infinity|setInterval\(|requestAnimationFrame\(/.test(source), false, `${path} must stay static`);
+  }
+});
