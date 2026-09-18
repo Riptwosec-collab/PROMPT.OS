@@ -40,7 +40,7 @@ test('slash shortcut focuses search only through editable-target shortcut policy
   const search = read('components/prompt/PromptSearch.jsx');
   assert.match(library, /searchInputRef/);
   assert.match(library, /shouldHandleShortcut/);
-  assert.match(library, /event\.key\s*===\s*['"]\/['"]/);
+  assert.match(library, /event\.key\s*(?:===|!==)\s*['"]\/['"]/);
   assert.match(library, /searchInputRef\.current\?\.focus\(\)/);
   assert.match(search, /inputRef/);
   assert.match(search, /ref=\{inputRef\}/);
