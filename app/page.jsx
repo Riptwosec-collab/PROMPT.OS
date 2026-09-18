@@ -105,7 +105,7 @@ export default function HomePage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [openCommandPalette, v5CommandPaletteEnabled]);
 
-  const status = { mode: 'ready', revision: '—', pendingCount: 0, lastSyncedAt: null, version: 'V5 PREVIEW' };
+  const status = null;
   const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
   const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
   const v5PromptDetailEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_DETAIL);
