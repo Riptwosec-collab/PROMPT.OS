@@ -16,6 +16,7 @@ export default function PromptSearch({
   categories = [],
   difficulties = [],
   sources = [],
+  inputRef,
 }) {
   const patch = (next) => onFiltersChange?.({ ...filters, ...next });
 
@@ -25,6 +26,7 @@ export default function PromptSearch({
         <label className="relative block">
           <span className="sr-only">Search prompts</span>
           <input
+            ref={inputRef}
             aria-label="Search prompts"
             value={query}
             onChange={(event) => onQueryChange?.(event.target.value)}
