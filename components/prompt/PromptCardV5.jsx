@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useReducedMotion } from 'motion/react';
 import MotionSurface from '../ui/MotionSurface.jsx';
 import GlassGlyph from '../ui/GlassGlyph.jsx';
-import { scorePromptHealth } from '../../lib/prompts/health-score.mjs';
 import { promptLayoutId } from '../../lib/ui/prompt-transition.mjs';
 
 const FINE_POINTER_QUERY = '(hover: hover) and (pointer: fine)';
@@ -36,21 +35,17 @@ function ActionButton({ children, title, disabled = false, onClick }) {
 
 export default function PromptCardV5({
   prompt,
+  healthScore = null,
   onOpen,
   onRun,
   onFavorite,
   onPin,
-  healthEnabled = false,
   transitionEnabled = false,
 }) {
   const cardRef = useRef(null);
   const frameRef = useRef(0);
   const reducedMotion = useReducedMotion();
   const variables = variableCount(prompt);
-  const healthScore = useMemo(
-    () => healthEnabled ? scorePromptHealth(prompt).total : null,
-    [healthEnabled, prompt],
-  );
 
   useEffect(() => () => {
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
@@ -96,6 +91,7 @@ export default function PromptCardV5({
       whileTap={reducedMotion ? undefined : { scale: 0.985 }}
       onPointerMove={updatePointerLight}
       onPointerLeave={clearPointerLight}
+      onBlur={clearPointerLight}
       className="v5-premium-card v5-glass-panel group relative min-w-0 rounded-3xl border border-white/10 p-4 text-left focus-within:border-cyan-300/30 md:p-5"
       data-prompt-id={prompt?.id}
     >
@@ -126,7 +122,7 @@ export default function PromptCardV5({
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3">
+      <div className="v5-card-quick-actions mt-5 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3">
         <button
           type="button"
           onClick={() => onOpen?.(prompt?.id)}
