@@ -52,6 +52,7 @@ export default function HomePage() {
   const v5PromptHealthEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_HEALTH);
   const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
   const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
+  const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);
 
   if (!v5ShellEnabled) {
     return (
@@ -64,7 +65,12 @@ export default function HomePage() {
   return (
     <LanguageRuntime>
       <V5FeatureFlagProvider>
-        <AppShell activePage={activePage} onNavigate={navigate} status={status}>
+        <AppShell
+          activePage={activePage}
+          onNavigate={navigate}
+          status={status}
+          visualSystemEnabled={v5VisualSystemEnabled}
+        >
           {activePage === 'library' ? (
             v5SearchEnabled ? (
               <PromptLibraryV5
