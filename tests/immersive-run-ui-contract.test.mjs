@@ -67,6 +67,7 @@ test('optional post-run actions are capability-aware instead of fake enabled con
   for (const callback of ['onSaveResult', 'onImprove', 'onCompare', 'onAddToWorkflow']) {
     assert.match(source, new RegExp(`${callback}\\?`));
   }
+  assert.match(source, /onEdit\s*\?/);
 });
 
 test('immersive run is gated by execution authority and its own feature flag through the detail path', () => {
@@ -92,4 +93,24 @@ test('legacy delegated run behavior remains present when immersive mode is disab
   assert.match(detail, /onRun/);
   assert.match(detail, /Execution is not enabled/);
   assert.match(detail, /setRunError/);
+});
+
+test('mobile active runs expose a safe-area floating run island with reachable controls', () => {
+  const panel = fs.readFileSync(panelPath, 'utf8');
+  const css = fs.readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
+  assert.match(panel, /v5-mobile-run-island/);
+  assert.match(panel, /md:hidden/);
+  assert.match(panel, /min-h-11/);
+  assert.match(panel, /Stop/);
+  assert.match(css, /\.v5-mobile-run-island/);
+  assert.match(css, /safe-area-inset-bottom/);
+});
+
+test('execution visuals are bounded and reduced-motion safe', () => {
+  const css = fs.readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
+  assert.match(css, /\.v5-execution-dot/);
+  assert.match(css, /\.v5-execution-wave/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  const immersiveCss = css.match(/\.v5-execution-dot[\s\S]*?@media \(prefers-reduced-motion: reduce\)[\s\S]*/)?.[0] || '';
+  assert.equal(/rotateX|rotateY|perspective|filter:\s*blur\(/i.test(immersiveCss), false);
 });
