@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { shouldFollowLatest } from '../../lib/ai/scroll-follow.mjs';
 import ExecutionPulse from './ExecutionPulse.jsx';
 import RunTelemetry from './RunTelemetry.jsx';
+import styles from './ImmersiveRunPanel.module.css';
 
 const ACTIVE = new Set(['preparing', 'running', 'streaming']);
 
@@ -136,7 +137,7 @@ export default function ImmersiveRunPanel({
 
       {active ? (
         <div
-          className="v5-mobile-run-island fixed left-3 right-3 z-50 flex items-center gap-2 rounded-2xl border border-cyan-300/20 bg-slate-950/95 p-2 md:hidden"
+          className={`v5-mobile-run-island ${styles.mobileRunIsland} fixed left-3 right-3 z-50 flex items-center gap-2 rounded-2xl border border-cyan-300/20 bg-slate-950/95 p-2 md:hidden`}
           aria-label="Active run controls"
         >
           <div className="min-w-0 flex-1 overflow-hidden">
