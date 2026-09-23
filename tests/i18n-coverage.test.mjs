@@ -45,6 +45,13 @@ const V5_PHASE3_UI_TEXT = [
   'Add to pack', 'Quick actions', 'Close', 'Open details', 'No matching prompts',
 ];
 
+const V5_PHASE4_UI_TEXT = [
+  'Preparing', 'Running', 'Streaming', 'Completed', 'Failed', 'Stopped', 'Ready',
+  'Stop', 'Retry', 'Run Again', 'Edit Prompt', 'Copied', 'Jump to latest',
+  'Save Result', 'Provider', 'Model', 'Latency', 'Input tokens', 'Output tokens',
+  'Total tokens', 'Response ID', 'Run status',
+];
+
 test('all known user-facing Prompt.OS labels have a Thai rendering', () => {
   const missing = REQUIRED_UI_TEXT.filter((text) => translate('th', text) === text);
   assert.deepEqual(missing, [], `Missing Thai translations: ${missing.join(', ')}`);
@@ -94,6 +101,20 @@ test('Phase 3 premium prompt actions and metadata have Thai rendering', () => {
     'components/prompt/PromptLibraryV5.jsx',
   ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
   for (const label of ['Health', 'Run', 'Favorite', 'Pin', 'Add to pack', 'Quick actions', 'Close', 'Open details']) {
+    assert.match(files, new RegExp(label, 'i'));
+  }
+});
+
+test('Phase 4 immersive run states, actions and telemetry have Thai rendering', () => {
+  const missing = V5_PHASE4_UI_TEXT.filter((text) => translateCatalogThai('th', text) === text);
+  assert.deepEqual(missing, [], `Missing V5 Phase 4 translations: ${missing.join(', ')}`);
+
+  const files = [
+    'components/prompt/ExecutionPulse.jsx',
+    'components/prompt/RunTelemetry.jsx',
+    'components/prompt/ImmersiveRunPanel.jsx',
+  ].map((path) => fs.readFileSync(path, 'utf8')).join('\n');
+  for (const label of ['Preparing', 'Streaming', 'Completed', 'Stopped', 'Jump to latest', 'Input tokens', 'Response ID']) {
     assert.match(files, new RegExp(label, 'i'));
   }
 });
