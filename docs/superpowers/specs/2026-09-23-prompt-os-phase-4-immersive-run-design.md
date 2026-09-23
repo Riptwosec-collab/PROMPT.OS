@@ -141,24 +141,27 @@ trigger                 run | retry | regenerate
 sourceType              prompt | draft | version
 sourceVersionId         nullable
 
-status                   preparing | running | success | failed | stopped | interrupted
+status                  preparing | running | success | failed | stopped | interrupted
 
 promptSnapshot
 variablesSnapshot
 renderedPrompt
 output
 
-provider                 real value only
-model                    real value only
+provider                real value only
+model                   real value only
 startedAt
 completedAt
-latencyMs                real value only
-inputTokens              real value only
-outputTokens             real value only
-responseId               real value only
-error                    nullable
+latencyMs               real value only
+inputTokens             real value only
+outputTokens            real value only
+responseId              real value only
+error                   nullable
 
-syncState                local | pending | syncing | synced | conflict | sync_error
+ownerSessionId          active-run lease owner while non-terminal
+heartbeatAt             active-run lease heartbeat while non-terminal
+
+syncState               local | pending | syncing | synced | conflict | sync_error
 revision
 createdAt
 updatedAt
@@ -206,16 +209,19 @@ On stream/network/provider failure:
 
 ### 8.4 Retry / Regenerate
 
-Retry and Regenerate never overwrite the source run.
+Retry and Regenerate never overwrite the source run, but they have distinct semantics:
 
-A new run gets:
+- **Retry** reruns the exact prompt and variable snapshots from the selected source run.
+- **Regenerate** creates a new run from the current Run Workspace inputs, including any edits made after the prior run.
+
+Both create:
 
 - a new `id`
 - `parentRunId` pointing to the previous run
 - `trigger = retry` or `trigger = regenerate`
-- a fresh prompt/variable snapshot reflecting the inputs used for that new execution
+- a fresh immutable snapshot for the new run
 
-This preserves a complete audit trail.
+This preserves a complete audit trail while making the two actions behaviorally meaningful.
 
 ## 9. Streaming Persistence
 
@@ -239,13 +245,26 @@ Force a final flush when:
 - stream fails
 - stream completes
 - the active run controller is torn down
-- the page is exiting when the platform permits a safe synchronous/final write path
+- the page is exiting when the platform permits a final asynchronous persistence attempt
 
-The implementation plan may tune checkpoint interval and size thresholds based on tests, but the design requirement is bounded write frequency plus reliable terminal flush.
+Browser lifecycle events are best-effort only; correctness must rely primarily on periodic checkpoints rather than assuming an exit-time write will complete.
 
-## 10. Crash Recovery
+The implementation plan may tune checkpoint interval and size thresholds based on tests, but the design requirement is bounded write frequency plus reliable terminal flush during normal execution.
 
-On app startup, detect stale records left in `preparing` or `running` when no active session exists.
+## 10. Crash and Multi-tab Recovery
+
+Recovery must not mark a run `interrupted` merely because another browser tab cannot see an in-memory controller.
+
+Each active run holds a local lease:
+
+- `ownerSessionId` identifies the tab/session that owns execution
+- `heartbeatAt` is refreshed while the run is active
+
+On startup or recovery scan:
+
+1. inspect records in `preparing` or `running`
+2. treat a run as active while its lease heartbeat is fresh
+3. only mark it `interrupted` after the lease is stale beyond the implementation-defined recovery threshold
 
 Recovered stale runs become:
 
@@ -298,6 +317,12 @@ SyncRepository
 ```
 
 The implementation may use one IndexedDB database with multiple object stores, but consumers interact through repositories rather than raw object stores.
+
+### 11.1 IndexedDB Versioning
+
+The database schema must be explicitly versioned.
+
+Schema upgrades must be additive or migration-backed and covered by tests. An upgrade must not silently drop existing prompt/workspace data or Phase 4 artifacts. If a migration cannot be completed safely, the app must surface an error rather than resetting the database automatically.
 
 ## 12. Saved Result Contract
 
@@ -433,16 +458,18 @@ Use a single-column workflow:
 
 The bottom bar must not cover interactive content or result text.
 
-## 18. Run Workspace Behavior
+## 18. Run Workspace Editing and Exit Behavior
 
 The user may edit:
 
 - variable values
-- prompt text used for the next run
+- prompt text used for the next Run or Regenerate action
 
-Those edits are session/draft inputs only. They do not automatically create a Prompt Version.
+These edits are Run Workspace session state only. They do not mutate the canonical prompt and do not create a Prompt Version automatically.
 
-Closing Run Workspace returns the user to the originating Prompt Detail context where practical, preserving entered values according to the existing ownership model.
+A run captures the exact edited inputs in its immutable snapshot. A Saved Result captures those same effective inputs when saved from that run.
+
+If the user closes Run Workspace without executing the edits, the canonical prompt remains unchanged. Returning to Prompt Detail restores the originating context and existing variable ownership behavior; ephemeral prompt-text edits from Run Workspace are not silently committed back to the prompt library.
 
 Keyboard shortcut:
 
@@ -466,6 +493,8 @@ Support at minimum:
 A Raw toggle exposes the original text output.
 
 Markdown rendering must not mutate or reinterpret the stored raw output. Stored output remains the canonical execution result.
+
+Rendered Markdown must be sanitized. Raw HTML from model output is disabled or sanitized through an explicitly reviewed safe path; model output must never be trusted as executable markup.
 
 ## 20. Visual and Motion Rules
 
@@ -566,7 +595,10 @@ Implementation must use TDD and include regression coverage for at least:
 - failure finalization
 - stop finalization
 - crash recovery to `interrupted`
-- Retry/Regenerate create new IDs
+- active multi-tab lease is not falsely interrupted
+- stale lease recovery
+- Retry creates a new run from the exact parent snapshot
+- Regenerate creates a new run from current workspace inputs
 - prior terminal runs remain immutable
 
 ### Persistence
@@ -576,6 +608,7 @@ Implementation must use TDD and include regression coverage for at least:
 - storage failure before Run blocks execution
 - storage failure during Run does not falsely report Saved
 - stale active-run recovery
+- IndexedDB schema upgrade preserves existing data
 
 ### Saved Results contract
 - explicit Save only
@@ -594,10 +627,12 @@ Implementation must use TDD and include regression coverage for at least:
 - `Ctrl/Cmd + Enter`
 - Stop availability while running
 - Markdown/Raw toggle
+- Markdown output sanitization
 - partial output visible on failure/stop
 - mobile sticky actions
 - reduced motion
 - focus restoration
+- closing unexecuted Run edits does not mutate canonical prompt
 
 ### Regressions
 - existing Prompt Detail behavior
@@ -647,12 +682,15 @@ Phase 4 is successful when:
 2. Every execution is represented by a durable local run record before network execution begins.
 3. Streaming output appears live and is checkpointed without writing IndexedDB on every token.
 4. Stop, failure, and interruption preserve recoverable partial output.
-5. Retry/Regenerate produce new linked runs rather than overwriting history.
-6. Saved Result creation produces a complete immutable snapshot.
-7. Cloud failure never causes local run data loss or blocks local browsing/editing.
-8. Conflict handling never silently overwrites local data.
-9. The feature can be disabled cleanly with its feature flag.
-10. Existing Prompt.OS regressions, accessibility expectations, and the 80 built-in prompt catalog remain intact.
+5. Multi-tab recovery cannot falsely interrupt a run with a fresh active lease.
+6. Retry and Regenerate create new linked runs with the defined snapshot semantics rather than overwriting history.
+7. Saved Result creation produces a complete immutable snapshot.
+8. Cloud failure never causes local run data loss or blocks local browsing/editing.
+9. Conflict handling never silently overwrites local data.
+10. Run Workspace edits do not silently mutate the canonical prompt.
+11. Rich Markdown rendering cannot execute untrusted model markup.
+12. The feature can be disabled cleanly with its feature flag.
+13. Existing Prompt.OS regressions, accessibility expectations, and the 80 built-in prompt catalog remain intact.
 
 ## 30. Next Gate
 
