@@ -1,11 +1,10 @@
-import 'fake-indexeddb/auto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { openRuntimeDb } from '../lib/run/indexeddb.mjs';
 import { createResultRepository } from '../lib/run/result-repository.mjs';
+import { freshRuntimeDb } from './runtime-db-test-helper.mjs';
 
 test('saveFromRun stores an independent immutable snapshot', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const resultRepo = createResultRepository({ db, idFactory: () => 'res-1', now: () => 2000 });
   const sourceRun = {
     id: 'run-1', promptId: 'p1', promptSnapshot: 'Explain {{topic}}',
@@ -29,7 +28,7 @@ test('saveFromRun stores an independent immutable snapshot', async () => {
 });
 
 test('saved result list is newest first and returned records are detached copies', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   let id = 0;
   let now = 1000;
   const repo = createResultRepository({ db, idFactory: () => `res-${++id}`, now: () => now });
