@@ -49,7 +49,8 @@ const V5_PHASE4_UI_TEXT = [
   'Preparing', 'Running', 'Streaming', 'Completed', 'Failed', 'Stopped', 'Ready',
   'Stop', 'Retry', 'Run Again', 'Edit Prompt', 'Copied', 'Jump to latest',
   'Save Result', 'Provider', 'Model', 'Latency', 'Input tokens', 'Output tokens',
-  'Total tokens', 'Response ID', 'Run status',
+  'Total tokens', 'Response ID', 'Run status', 'Waiting for the first response chunk…',
+  'Run the prompt to see streamed output here.', 'Active run controls',
 ];
 
 test('all known user-facing Prompt.OS labels have a Thai rendering', () => {
