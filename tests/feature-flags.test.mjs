@@ -5,7 +5,7 @@ import { readFeatureFlags, isFeatureEnabled, V5_FLAG_NAMES } from '../lib/ui/fea
 const EXPECTED_FLAGS = [
   'V5_WORKSPACE', 'V5_SYNC', 'V5_EVALUATION', 'V5_ANALYTICS',
   'V5_SEARCH', 'V5_PROMPT_DETAIL', 'V5_VARIABLES', 'V5_PROMPT_HEALTH',
-  'V5_SMART_COLLECTIONS', 'V5_EXECUTION_ENGINE', 'V5_AI_IMPROVE',
+  'V5_SMART_COLLECTIONS', 'V5_EXECUTION_ENGINE', 'V5_IMMERSIVE_RUN', 'V5_AI_IMPROVE',
   'V5_COST_GUARD', 'V5_PROVIDER_SELECTOR', 'V5_COMMAND_PALETTE',
   'V5_CLOUD_SYNC', 'V5_USAGE_ANALYTICS', 'V5_WORKFLOW', 'V5_VISUAL_SYSTEM',
   'V5_MISSION_CONTROL', 'V5_PREMIUM_CARDS', 'V5_SHARED_PROMPT_TRANSITION',
@@ -35,6 +35,13 @@ test('legacy flags remain supported while granular flags use the same parsing ru
   assert.equal(flags.V5_EVALUATION, false);
   assert.equal(flags.V5_ANALYTICS, true);
   assert.equal(flags.V5_SEARCH, true);
+});
+
+test('immersive run flag is default-off and strict-true only', () => {
+  assert.equal(readFeatureFlags({}).V5_IMMERSIVE_RUN, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_IMMERSIVE_RUN: ' true ' }).V5_IMMERSIVE_RUN, true);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_IMMERSIVE_RUN: '1' }).V5_IMMERSIVE_RUN, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_IMMERSIVE_RUN: 'yes' }).V5_IMMERSIVE_RUN, false);
 });
 
 test('visual system flag is default-off and only explicit true enables it', () => {
