@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const hookPath = new URL('../components/prompt/usePromptRun.js', import.meta.url);
 const pulsePath = new URL('../components/prompt/ExecutionPulse.jsx', import.meta.url);
 const telemetryPath = new URL('../components/prompt/RunTelemetry.jsx', import.meta.url);
+const panelPath = new URL('../components/prompt/ImmersiveRunPanel.jsx', import.meta.url);
 
 test('immersive run hook reuses streamAiRun and one AbortController transport path', () => {
   const source = fs.readFileSync(hookPath, 'utf8');
@@ -40,4 +41,30 @@ test('run telemetry renders only supplied real meta and never invents cost', () 
   assert.match(source, /Number\.isFinite/);
   assert.match(source, /inputTokens[^\n]*outputTokens|outputTokens[^\n]*inputTokens/s);
   assert.equal(/\bcost\b|Estimated Cost/i.test(source), false);
+});
+
+test('immersive run panel exposes safe follow and semantic action states', () => {
+  const source = fs.readFileSync(panelPath, 'utf8');
+  assert.match(source, /shouldFollowLatest/);
+  assert.match(source, /scrollTo\s*\(/);
+  assert.match(source, /Jump to latest/);
+  assert.match(source, /aria-live=["']polite["']/);
+  for (const action of ['Stop', 'Retry', 'Run Again', 'Edit Prompt', 'Copy', 'Copied']) {
+    assert.match(source, new RegExp(action));
+  }
+});
+
+test('immersive output stays selectable and failed or stopped states do not clear streamed output', () => {
+  const source = fs.readFileSync(panelPath, 'utf8');
+  assert.match(source, /state\.output/);
+  assert.match(source, /whitespace-pre-wrap/);
+  assert.equal(/split\(['"]{0,1}['"]{0,1}\)|Array\.from\(state\.output/.test(source), false);
+  assert.equal(/setOutput\s*\(\s*['"]['"]\s*\)/.test(source), false);
+});
+
+test('optional post-run actions are capability-aware instead of fake enabled controls', () => {
+  const source = fs.readFileSync(panelPath, 'utf8');
+  for (const callback of ['onSaveResult', 'onImprove', 'onCompare', 'onAddToWorkflow']) {
+    assert.match(source, new RegExp(`${callback}\\?`));
+  }
 });
