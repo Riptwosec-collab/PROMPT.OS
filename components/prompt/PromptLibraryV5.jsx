@@ -51,6 +51,8 @@ export default function PromptLibraryV5({
   healthEnabled = false,
   workspaceEnabled = false,
   smartCollectionsEnabled = false,
+  executionEnabled = false,
+  immersiveRunEnabled = false,
   premiumCardsEnabled = false,
   sharedTransitionEnabled = false,
   externalRequest = null,
@@ -218,6 +220,8 @@ export default function PromptLibraryV5({
               prompt={selectedPrompt}
               variablesEnabled={variablesEnabled}
               healthEnabled={healthEnabled}
+              executionEnabled={executionEnabled}
+              immersiveRunEnabled={immersiveRunEnabled}
               transitionEnabled={sharedTransitionEnabled}
               sourceAvailable={sourceAvailable}
               onClose={closePrompt}
