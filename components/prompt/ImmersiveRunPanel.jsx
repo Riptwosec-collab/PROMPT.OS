@@ -8,6 +8,15 @@ import RunTelemetry from './RunTelemetry.jsx';
 import styles from './ImmersiveRunPanel.module.css';
 
 const ACTIVE = new Set(['preparing', 'running', 'streaming']);
+const STATUS_LABELS = Object.freeze({
+  idle: 'Ready',
+  preparing: 'Preparing',
+  running: 'Running',
+  streaming: 'Streaming',
+  completed: 'Completed',
+  failed: 'Failed',
+  stopped: 'Stopped',
+});
 
 function ActionButton({ children, onClick, primary = false }) {
   return (
@@ -38,6 +47,7 @@ export default function ImmersiveRunPanel({
   const [following, setFollowing] = useState(true);
   const [copied, setCopied] = useState(false);
   const status = state?.status || 'idle';
+  const statusLabel = STATUS_LABELS[status] || 'Ready';
   const output = state?.output || '';
   const active = ACTIVE.has(status);
 
@@ -84,7 +94,7 @@ export default function ImmersiveRunPanel({
       </div>
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        Run status: {status}
+        <span>Run status</span>: <span>{statusLabel}</span>
       </div>
 
       <div className="relative mt-3">
@@ -149,7 +159,7 @@ export default function ImmersiveRunPanel({
               onClick={() => scrollToLatest(true)}
               className="min-h-11 shrink-0 rounded-xl border border-white/10 px-3 text-[11px] font-medium text-slate-200"
             >
-              Latest
+              Jump to latest
             </button>
           ) : null}
           <button
