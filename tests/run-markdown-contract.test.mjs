@@ -19,7 +19,7 @@ test('RunResult rejects unsafe link protocols and hardens external links', () =>
   assert.match(source, /https:/);
   assert.match(source, /mailto:/);
   assert.match(source, /safeHref/);
-  assert.match(source, /target=["']_blank["']/);
+  assert.match(source, /target=\{external\s*\?\s*['"]_blank['"]\s*:\s*undefined\}/);
   assert.match(source, /noreferrer noopener/);
   assert.doesNotMatch(source, /javascript:\s*['"]/i);
 });
@@ -35,6 +35,6 @@ test('fenced code routes language-aware blocks through prism-react-renderer', ()
   const source = read('components/prompt/RunResult.jsx');
   assert.match(source, /prism-react-renderer/);
   assert.match(source, /Highlight/);
-  assert.match(source, /language/);
-  assert.match(source, /match\(/);
+  assert.match(source, /language-/);
+  assert.match(source, /\.exec\(className/);
 });
