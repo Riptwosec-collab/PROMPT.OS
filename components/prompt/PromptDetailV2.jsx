@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import GlassGlyph from '../ui/GlassGlyph.jsx';
 import PromptVariableForm from './PromptVariableForm.jsx';
 import PromptHealth from './PromptHealth.jsx';
+import ImmersiveRunPanel from './ImmersiveRunPanel.jsx';
+import usePromptRun from './usePromptRun.js';
 import { validatePromptVariables } from '../../lib/variables/validate-variables.mjs';
 import { renderPromptTemplate } from '../../lib/variables/render-prompt.mjs';
 import {
@@ -18,6 +20,8 @@ export default function PromptDetailV2({
   prompt,
   variablesEnabled = false,
   healthEnabled = false,
+  executionEnabled = false,
+  immersiveRunEnabled = false,
   transitionEnabled = false,
   sourceAvailable = true,
   onClose,
@@ -30,8 +34,15 @@ export default function PromptDetailV2({
   const [fieldErrors, setFieldErrors] = useState({});
   const [runError, setRunError] = useState('');
   const [running, setRunning] = useState(false);
+  const inputsRef = useRef(null);
   const reducedMotion = useReducedMotion();
   const variableConfig = prompt?.variableConfig || {};
+  const {
+    state: immersiveState,
+    run: runImmersive,
+    stop: stopImmersive,
+  } = usePromptRun({ provider: 'openai', model: prompt?.model });
+  const immersiveMode = executionEnabled && immersiveRunEnabled;
 
   const rendered = useMemo(
     () => renderPromptTemplate(prompt?.prompt || '', variableConfig, values),
@@ -64,6 +75,11 @@ export default function PromptDetailV2({
       setRunError('');
     }
 
+    if (immersiveMode) {
+      await runImmersive({ prompt: rendered.text });
+      return;
+    }
+
     if (!onRun) {
       setRunError('Execution is not enabled for this V5 preview yet.');
       return;
@@ -77,6 +93,15 @@ export default function PromptDetailV2({
     } finally {
       setRunning(false);
     }
+  };
+
+  const editPrompt = () => {
+    const region = inputsRef.current;
+    if (!region) return;
+    region.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
+    requestAnimationFrame(() => {
+      region.querySelector('input, textarea, select, button')?.focus();
+    });
   };
 
   const copy = async () => {
@@ -141,7 +166,7 @@ export default function PromptDetailV2({
               {healthEnabled && <div className="mt-4"><PromptHealth prompt={prompt} /></div>}
             </aside>
 
-            <main data-region="inputs" className="v5-glass order-2 rounded-2xl border border-white/10 p-4">
+            <main ref={inputsRef} data-region="inputs" className="v5-glass order-2 rounded-2xl border border-white/10 p-4">
               <div className="mb-4">
                 <p className="text-[10px] font-mono tracking-[0.2em] text-cyan-300/60">INPUTS</p>
                 <h2 className="mt-1 text-lg font-semibold text-white">Prompt Variables</h2>
@@ -171,14 +196,38 @@ export default function PromptDetailV2({
               </div>
               <pre className="mt-4 max-h-[55vh] overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/30 p-4 text-xs leading-6 text-slate-300">{rendered.text}</pre>
               {runError ? <p role="alert" className="mt-3 rounded-xl border border-rose-400/20 bg-rose-400/5 p-3 text-xs text-rose-200">{runError}</p> : null}
-              <button
-                type="button"
-                onClick={run}
-                disabled={running}
-                className="mt-4 w-full rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {running ? 'Running…' : '▶ Run Prompt'}
-              </button>
+
+              {immersiveMode ? (
+                immersiveState.status === 'idle' ? (
+                  <button
+                    type="button"
+                    onClick={run}
+                    className="mt-4 w-full rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100"
+                  >
+                    ▶ Run Prompt
+                  </button>
+                ) : (
+                  <div className="mt-4">
+                    <ImmersiveRunPanel
+                      state={immersiveState}
+                      onStop={stopImmersive}
+                      onRetry={run}
+                      onEdit={editPrompt}
+                      onImprove={onImprove ? () => onImprove(prompt) : undefined}
+                      reducedMotion={Boolean(reducedMotion)}
+                    />
+                  </div>
+                )
+              ) : (
+                <button
+                  type="button"
+                  onClick={run}
+                  disabled={running}
+                  className="mt-4 w-full rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {running ? 'Running…' : '▶ Run Prompt'}
+                </button>
+              )}
             </section>
           </motion.div>
         </motion.div>

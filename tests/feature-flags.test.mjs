@@ -9,6 +9,7 @@ const EXPECTED_FLAGS = [
   'V5_COST_GUARD', 'V5_PROVIDER_SELECTOR', 'V5_COMMAND_PALETTE',
   'V5_CLOUD_SYNC', 'V5_USAGE_ANALYTICS', 'V5_WORKFLOW', 'V5_VISUAL_SYSTEM',
   'V5_MISSION_CONTROL', 'V5_PREMIUM_CARDS', 'V5_SHARED_PROMPT_TRANSITION',
+  'V5_IMMERSIVE_RUN',
 ];
 
 test('V5 flags default to false with the complete legacy and granular flag set', () => {
@@ -62,4 +63,10 @@ test('premium cards and shared prompt transition flags are default-off and stric
   assert.equal(enabled.V5_SHARED_PROMPT_TRANSITION, true);
   assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_PREMIUM_CARDS: '1' }).V5_PREMIUM_CARDS, false);
   assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_SHARED_PROMPT_TRANSITION: 'yes' }).V5_SHARED_PROMPT_TRANSITION, false);
+});
+
+test('immersive run is independently default-off and strict-true only', () => {
+  assert.equal(readFeatureFlags({}).V5_IMMERSIVE_RUN, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_IMMERSIVE_RUN: ' true ' }).V5_IMMERSIVE_RUN, true);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_IMMERSIVE_RUN: '1' }).V5_IMMERSIVE_RUN, false);
 });
