@@ -21,11 +21,15 @@
     "motion": "13.4.0",
     "next": "16.3.5",
     "openai": "7.15.0",
+    "prism-react-renderer": "2.4.1",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
+    "fake-indexeddb": "6.2.5",
     "postcss": "8.5.28",
     "tailwindcss": "4.3.3",
     "wrangler": "4.131.2"

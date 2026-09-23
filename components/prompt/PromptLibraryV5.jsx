@@ -6,6 +6,7 @@ import PromptSearch from './PromptSearch.jsx';
 import PromptDetailV2 from './PromptDetailV2.jsx';
 import PromptCardV5 from './PromptCardV5.jsx';
 import PromptPacks from './PromptPacks.jsx';
+import RunWorkspace from './RunWorkspace.jsx';
 import WorkspaceSidebar from '../workspace/WorkspaceSidebar.jsx';
 import { AI_PROMPT_LIBRARY } from '../../lib/prompts/ai-prompt-library.mjs';
 import { buildSmartCollections } from '../../lib/prompts/smart-collections.mjs';
@@ -19,6 +20,11 @@ import { buildDefaultPacks } from '../../lib/prompts/default-packs.mjs';
 import { normalizeWorkspaceState } from '../../lib/workspace/model.mjs';
 import { searchPrompts } from '../../lib/search/prompt-search.mjs';
 import { shouldHandleShortcut } from '../../lib/ui/command-palette.mjs';
+import { openRuntimeDb } from '../../lib/run/indexeddb.mjs';
+import { createRunRepository } from '../../lib/run/run-repository.mjs';
+import { createResultRepository } from '../../lib/run/result-repository.mjs';
+import { createSyncRepository } from '../../lib/run/sync-repository.mjs';
+import { recoverInterruptedRuns } from '../../lib/run/recovery.mjs';
 
 const STORAGE_KEY = 'promptVaultData';
 
@@ -45,12 +51,24 @@ function findPromptElement(id) {
     .find((node) => node.getAttribute('data-prompt-id') === String(id)) || null;
 }
 
+function normalizeRunRequest(payload) {
+  const prompt = payload?.prompt?.id != null ? payload.prompt : payload;
+  if (!prompt?.id) return null;
+  return {
+    prompt,
+    initialValues: { ...(payload?.values || prompt.variables || {}) },
+    initialRenderedPrompt: String(payload?.renderedPrompt || ''),
+  };
+}
+
 export default function PromptLibraryV5({
   detailEnabled = false,
   variablesEnabled = false,
   healthEnabled = false,
   workspaceEnabled = false,
   smartCollectionsEnabled = false,
+  executionEnabled = false,
+  immersiveRunEnabled = false,
   premiumCardsEnabled = false,
   sharedTransitionEnabled = false,
   externalRequest = null,
@@ -68,11 +86,23 @@ export default function PromptLibraryV5({
     workspaceState: normalizeWorkspaceState({}),
     packs: buildDefaultPacks(AI_PROMPT_LIBRARY),
   }));
+  const [runRequest, setRunRequest] = useState(null);
+  const [runRuntime, setRunRuntime] = useState(() => ({
+    state: 'idle',
+    db: null,
+    runRepository: null,
+    resultRepository: null,
+    syncRepository: null,
+    latestRecoveredRun: null,
+    error: null,
+  }));
   const searchInputRef = useRef(null);
   const libraryHeadingRef = useRef(null);
   const originPromptIdRef = useRef(null);
   const originTriggerRef = useRef(null);
+  const runOriginRef = useRef(null);
   const reducedMotion = useReducedMotion();
+  const immersiveModeEnabled = executionEnabled && immersiveRunEnabled;
 
   useEffect(() => {
     const { prompts: loadedPrompts, database } = loadPromptCatalogState(browserStorage(), AI_PROMPT_LIBRARY, STORAGE_KEY);
@@ -80,6 +110,58 @@ export default function PromptLibraryV5({
     setOrganization(loadOrganization(loadedPrompts, database));
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!immersiveModeEnabled) {
+      setRunRequest(null);
+      setRunRuntime((current) => current.state === 'idle' ? current : {
+        state: 'idle', db: null, runRepository: null, resultRepository: null, syncRepository: null, latestRecoveredRun: null, error: null,
+      });
+      return undefined;
+    }
+
+    let cancelled = false;
+    let openedDb = null;
+    setRunRuntime({ state: 'loading', db: null, runRepository: null, resultRepository: null, syncRepository: null, latestRecoveredRun: null, error: null });
+
+    openRuntimeDb()
+      .then(async (db) => {
+        openedDb = db;
+        if (cancelled) {
+          db.close();
+          return;
+        }
+        const runRepository = createRunRepository({ db });
+        const resultRepository = createResultRepository({ db });
+        const syncRepository = createSyncRepository({ db });
+        const recoveredRuns = await recoverInterruptedRuns({ repository: runRepository });
+        if (cancelled) {
+          db.close();
+          return;
+        }
+        setRunRuntime({
+          state: 'ready',
+          db,
+          runRepository,
+          resultRepository,
+          syncRepository,
+          latestRecoveredRun: recoveredRuns[0] || null,
+          error: null,
+        });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setRunRuntime({
+          state: 'error', db: null, runRepository: null, resultRepository: null, syncRepository: null, latestRecoveredRun: null,
+          error: error?.message || 'Local Run storage is unavailable.',
+        });
+      });
+
+    return () => {
+      cancelled = true;
+      openedDb?.close();
+    };
+  }, [immersiveModeEnabled]);
 
   useEffect(() => {
     const handleSearchShortcut = (event) => {
@@ -160,6 +242,22 @@ export default function PromptLibraryV5({
     });
   };
 
+  const openImmersiveRun = async (payload) => {
+    const request = normalizeRunRequest(payload);
+    if (!request) return;
+    runOriginRef.current = typeof document === 'undefined' ? null : document.activeElement;
+    setRunRequest(request);
+  };
+
+  const closeImmersiveRun = () => {
+    setRunRequest(null);
+    requestAnimationFrame(() => {
+      if (runOriginRef.current?.isConnected && typeof runOriginRef.current.focus === 'function') {
+        runOriginRef.current.focus();
+      }
+    });
+  };
+
   useEffect(() => {
     if (!hydrated || !externalRequest) return;
 
@@ -201,6 +299,11 @@ export default function PromptLibraryV5({
 
   const showDiscovery = workspaceEnabled || smartCollectionsEnabled;
   const detailVisible = detailEnabled && selectedPrompt;
+  const runHandler = immersiveModeEnabled ? openImmersiveRun : onRunPrompt;
+  const runRuntimeReady = runRuntime.state === 'ready'
+    && runRuntime.runRepository
+    && runRuntime.resultRepository
+    && runRuntime.syncRepository;
 
   return (
     <LayoutGroup id="premium-prompt-experience">
@@ -221,7 +324,7 @@ export default function PromptLibraryV5({
               transitionEnabled={sharedTransitionEnabled}
               sourceAvailable={sourceAvailable}
               onClose={closePrompt}
-              onRun={onRunPrompt}
+              onRun={runHandler}
               onFavorite={(id, favorite) => patchPrompt(id, { favorite })}
               onPin={(id, pinned) => patchPrompt(id, { pinned })}
             />
@@ -257,6 +360,19 @@ export default function PromptLibraryV5({
                     </div>
                     <span className="rounded-full border border-cyan-400/20 bg-cyan-400/5 px-3 py-1 text-[10px] font-mono text-cyan-200">SEARCH V2</span>
                   </header>
+
+                  {immersiveModeEnabled && runRuntime.state === 'error' ? (
+                    <div role="alert" className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-3 text-xs text-amber-100">
+                      Local Run storage unavailable: {runRuntime.error}
+                    </div>
+                  ) : null}
+
+                  {immersiveModeEnabled && runRuntime.latestRecoveredRun ? (
+                    <details className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-3 text-xs text-amber-100">
+                      <summary className="cursor-pointer font-medium">Interrupted run recovered — view latest partial output</summary>
+                      <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-black/20 p-3 text-[11px] leading-5 text-slate-300">{runRuntime.latestRecoveredRun.output || 'No partial output was checkpointed.'}</pre>
+                    </details>
+                  ) : null}
 
                   <PromptSearch
                     query={query}
@@ -301,7 +417,7 @@ export default function PromptLibraryV5({
                               prompt={prompt}
                               healthScore={healthEnabled ? healthScores.get(String(prompt.id)) : null}
                               onOpen={openPrompt}
-                              onRun={onRunPrompt}
+                              onRun={runHandler}
                               onFavorite={(id, favorite) => patchPrompt(id, { favorite })}
                               onPin={(id, pinned) => patchPrompt(id, { pinned })}
                               transitionEnabled={sharedTransitionEnabled}
@@ -326,6 +442,19 @@ export default function PromptLibraryV5({
             </div>
           </motion.section>
         )}
+
+        {immersiveModeEnabled && runRequest && runRuntimeReady ? (
+          <RunWorkspace
+            key={`run-${runRequest.prompt.id}`}
+            prompt={runRequest.prompt}
+            initialValues={runRequest.initialValues}
+            initialRenderedPrompt={runRequest.initialRenderedPrompt}
+            onClose={closeImmersiveRun}
+            runRepository={runRuntime.runRepository}
+            resultRepository={runRuntime.resultRepository}
+            syncRepository={runRuntime.syncRepository}
+          />
+        ) : null}
       </AnimatePresence>
     </LayoutGroup>
   );

@@ -113,6 +113,8 @@ export default function HomePage() {
   const v5PromptHealthEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_HEALTH);
   const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
   const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
+  const v5ExecutionEnabled = Boolean(V5_FEATURE_FLAGS.V5_EXECUTION_ENGINE);
+  const v5ImmersiveRunEnabled = Boolean(V5_FEATURE_FLAGS.V5_IMMERSIVE_RUN);
   const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);
   const v5MissionControlEnabled = Boolean(V5_FEATURE_FLAGS.V5_MISSION_CONTROL);
   const v5UsageAnalyticsEnabled = Boolean(V5_FEATURE_FLAGS.V5_USAGE_ANALYTICS);
@@ -157,6 +159,8 @@ export default function HomePage() {
                 healthEnabled={v5PromptHealthEnabled}
                 workspaceEnabled={v5WorkspaceEnabled}
                 smartCollectionsEnabled={v5SmartCollectionsEnabled}
+                executionEnabled={v5ExecutionEnabled}
+                immersiveRunEnabled={v5ImmersiveRunEnabled}
                 premiumCardsEnabled={v5PremiumCardsEnabled}
                 sharedTransitionEnabled={v5PromptDetailEnabled && v5SharedPromptTransitionEnabled}
                 externalRequest={libraryRequest}
