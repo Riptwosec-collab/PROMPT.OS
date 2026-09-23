@@ -24,6 +24,7 @@ import { openRuntimeDb } from '../../lib/run/indexeddb.mjs';
 import { createRunRepository } from '../../lib/run/run-repository.mjs';
 import { createResultRepository } from '../../lib/run/result-repository.mjs';
 import { createSyncRepository } from '../../lib/run/sync-repository.mjs';
+import { recoverInterruptedRuns } from '../../lib/run/recovery.mjs';
 
 const STORAGE_KEY = 'promptVaultData';
 
@@ -92,6 +93,7 @@ export default function PromptLibraryV5({
     runRepository: null,
     resultRepository: null,
     syncRepository: null,
+    latestRecoveredRun: null,
     error: null,
   }));
   const searchInputRef = useRef(null);
@@ -113,18 +115,26 @@ export default function PromptLibraryV5({
     if (!immersiveModeEnabled) {
       setRunRequest(null);
       setRunRuntime((current) => current.state === 'idle' ? current : {
-        state: 'idle', db: null, runRepository: null, resultRepository: null, syncRepository: null, error: null,
+        state: 'idle', db: null, runRepository: null, resultRepository: null, syncRepository: null, latestRecoveredRun: null, error: null,
       });
       return undefined;
     }
 
     let cancelled = false;
     let openedDb = null;
-    setRunRuntime({ state: 'loading', db: null, runRepository: null, resultRepository: null, syncRepository: null, error: null });
+    setRunRuntime({ state: 'loading', db: null, runRepository: null, resultRepository: null, syncRepository: null, latestRecoveredRun: null, error: null });
 
     openRuntimeDb()
-      .then((db) => {
+      .then(async (db) => {
         openedDb = db;
+        if (cancelled) {
+          db.close();
+          return;
+        }
+        const runRepository = createRunRepository({ db });
+        const resultRepository = createResultRepository({ db });
+        const syncRepository = createSyncRepository({ db });
+        const recoveredRuns = await recoverInterruptedRuns({ repository: runRepository });
         if (cancelled) {
           db.close();
           return;
@@ -132,16 +142,17 @@ export default function PromptLibraryV5({
         setRunRuntime({
           state: 'ready',
           db,
-          runRepository: createRunRepository({ db }),
-          resultRepository: createResultRepository({ db }),
-          syncRepository: createSyncRepository({ db }),
+          runRepository,
+          resultRepository,
+          syncRepository,
+          latestRecoveredRun: recoveredRuns[0] || null,
           error: null,
         });
       })
       .catch((error) => {
         if (cancelled) return;
         setRunRuntime({
-          state: 'error', db: null, runRepository: null, resultRepository: null, syncRepository: null,
+          state: 'error', db: null, runRepository: null, resultRepository: null, syncRepository: null, latestRecoveredRun: null,
           error: error?.message || 'Local Run storage is unavailable.',
         });
       });
@@ -354,6 +365,13 @@ export default function PromptLibraryV5({
                     <div role="alert" className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-3 text-xs text-amber-100">
                       Local Run storage unavailable: {runRuntime.error}
                     </div>
+                  ) : null}
+
+                  {immersiveModeEnabled && runRuntime.latestRecoveredRun ? (
+                    <details className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-3 text-xs text-amber-100">
+                      <summary className="cursor-pointer font-medium">Interrupted run recovered — view latest partial output</summary>
+                      <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-black/20 p-3 text-[11px] leading-5 text-slate-300">{runRuntime.latestRecoveredRun.output || 'No partial output was checkpointed.'}</pre>
+                    </details>
                   ) : null}
 
                   <PromptSearch
