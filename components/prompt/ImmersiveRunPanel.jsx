@@ -77,7 +77,7 @@ export default function ImmersiveRunPanel({
           {active ? <ActionButton primary onClick={() => onStop?.()}>Stop</ActionButton> : null}
           {status === 'failed' ? <ActionButton primary onClick={() => onRetry?.()}>Retry</ActionButton> : null}
           {status === 'stopped' || status === 'completed' ? <ActionButton primary onClick={() => onRetry?.()}>Run Again</ActionButton> : null}
-          {status === 'failed' || status === 'stopped' ? <ActionButton onClick={() => onEdit?.()}>Edit Prompt</ActionButton> : null}
+          {(status === 'failed' || status === 'stopped') && onEdit ? <ActionButton onClick={() => onEdit?.()}>Edit Prompt</ActionButton> : null}
           {status === 'completed' ? <ActionButton onClick={copyOutput}>{copied ? 'Copied' : 'Copy'}</ActionButton> : null}
         </div>
       </div>
@@ -131,6 +131,33 @@ export default function ImmersiveRunPanel({
           {onImprove ? <ActionButton onClick={() => onImprove?.(state)}>Improve</ActionButton> : null}
           {onCompare ? <ActionButton onClick={() => onCompare?.(state)}>Compare</ActionButton> : null}
           {onAddToWorkflow ? <ActionButton onClick={() => onAddToWorkflow?.(state)}>Add to Workflow</ActionButton> : null}
+        </div>
+      ) : null}
+
+      {active ? (
+        <div
+          className="v5-mobile-run-island fixed left-3 right-3 z-50 flex items-center gap-2 rounded-2xl border border-cyan-300/20 bg-slate-950/95 p-2 md:hidden"
+          aria-label="Active run controls"
+        >
+          <div className="min-w-0 flex-1 overflow-hidden">
+            <ExecutionPulse status={status} reducedMotion={reducedMotion} />
+          </div>
+          {!following && output ? (
+            <button
+              type="button"
+              onClick={() => scrollToLatest(true)}
+              className="min-h-11 shrink-0 rounded-xl border border-white/10 px-3 text-[11px] font-medium text-slate-200"
+            >
+              Latest
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onStop?.()}
+            className="min-h-11 shrink-0 rounded-xl border border-cyan-300/25 bg-cyan-300/[0.09] px-4 text-xs font-semibold text-cyan-100"
+          >
+            Stop
+          </button>
         </div>
       ) : null}
     </section>
