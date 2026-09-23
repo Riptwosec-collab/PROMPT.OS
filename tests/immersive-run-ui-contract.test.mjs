@@ -6,6 +6,7 @@ const hookPath = new URL('../components/prompt/usePromptRun.js', import.meta.url
 const pulsePath = new URL('../components/prompt/ExecutionPulse.jsx', import.meta.url);
 const telemetryPath = new URL('../components/prompt/RunTelemetry.jsx', import.meta.url);
 const panelPath = new URL('../components/prompt/ImmersiveRunPanel.jsx', import.meta.url);
+const stylesPath = new URL('../components/prompt/ImmersiveRunPanel.module.css', import.meta.url);
 
 test('immersive run hook reuses streamAiRun and one AbortController transport path', () => {
   const source = fs.readFileSync(hookPath, 'utf8');
@@ -97,20 +98,19 @@ test('legacy delegated run behavior remains present when immersive mode is disab
 
 test('mobile active runs expose a safe-area floating run island with reachable controls', () => {
   const panel = fs.readFileSync(panelPath, 'utf8');
-  const css = fs.readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
+  const css = fs.readFileSync(stylesPath, 'utf8');
   assert.match(panel, /v5-mobile-run-island/);
   assert.match(panel, /md:hidden/);
   assert.match(panel, /min-h-11/);
   assert.match(panel, /Stop/);
-  assert.match(css, /\.v5-mobile-run-island/);
+  assert.match(css, /\.mobileRunIsland/);
   assert.match(css, /safe-area-inset-bottom/);
 });
 
 test('execution visuals are bounded and reduced-motion safe', () => {
-  const css = fs.readFileSync(new URL('../app/globals.css', import.meta.url), 'utf8');
-  assert.match(css, /\.v5-execution-dot/);
-  assert.match(css, /\.v5-execution-wave/);
+  const css = fs.readFileSync(stylesPath, 'utf8');
+  assert.match(css, /v5-execution-dot/);
+  assert.match(css, /v5-execution-wave/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
-  const immersiveCss = css.match(/\.v5-execution-dot[\s\S]*?@media \(prefers-reduced-motion: reduce\)[\s\S]*/)?.[0] || '';
-  assert.equal(/rotateX|rotateY|perspective|filter:\s*blur\(/i.test(immersiveCss), false);
+  assert.equal(/rotateX|rotateY|perspective|filter:\s*blur\(/i.test(css), false);
 });
