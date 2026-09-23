@@ -68,3 +68,28 @@ test('optional post-run actions are capability-aware instead of fake enabled con
     assert.match(source, new RegExp(`${callback}\\?`));
   }
 });
+
+test('immersive run is gated by execution authority and its own feature flag through the detail path', () => {
+  const page = fs.readFileSync(new URL('../app/page.jsx', import.meta.url), 'utf8');
+  const library = fs.readFileSync(new URL('../components/prompt/PromptLibraryV5.jsx', import.meta.url), 'utf8');
+  const detail = fs.readFileSync(new URL('../components/prompt/PromptDetailV2.jsx', import.meta.url), 'utf8');
+
+  assert.match(page, /V5_EXECUTION_ENGINE/);
+  assert.match(page, /V5_IMMERSIVE_RUN/);
+  assert.match(page, /executionEnabled/);
+  assert.match(page, /immersiveRunEnabled/);
+  assert.match(library, /executionEnabled/);
+  assert.match(library, /immersiveRunEnabled/);
+  assert.match(detail, /executionEnabled\s*&&\s*immersiveRunEnabled/);
+  assert.match(detail, /usePromptRun/);
+  assert.match(detail, /ImmersiveRunPanel/);
+  assert.match(detail, /rendered\.text/);
+  assert.match(detail, /provider:\s*['"]openai['"]/);
+});
+
+test('legacy delegated run behavior remains present when immersive mode is disabled', () => {
+  const detail = fs.readFileSync(new URL('../components/prompt/PromptDetailV2.jsx', import.meta.url), 'utf8');
+  assert.match(detail, /onRun/);
+  assert.match(detail, /Execution is not enabled/);
+  assert.match(detail, /setRunError/);
+});
