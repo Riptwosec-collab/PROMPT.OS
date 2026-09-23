@@ -82,6 +82,13 @@ test('library owns runtime repositories and the Run Workspace rather than cards 
   assert.doesNotMatch(detail, /openRuntimeDb|createRunRepository|streamAiRun/);
 });
 
+test('runtime initialization recovers stale active runs without touching fresh leases', () => {
+  const library = read('components/prompt/PromptLibraryV5.jsx');
+  assert.match(library, /recoverInterruptedRuns/);
+  assert.match(library, /await\s+recoverInterruptedRuns\s*\(/);
+  assert.match(library, /runRepository/);
+});
+
 test('Prompt Detail keeps legacy delegated run path and forwards validated inputs to immersive routing', () => {
   const detail = read('components/prompt/PromptDetailV2.jsx');
   assert.match(detail, /onRun/);
