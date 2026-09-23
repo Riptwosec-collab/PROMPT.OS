@@ -1,12 +1,11 @@
-import 'fake-indexeddb/auto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { openRuntimeDb } from '../lib/run/indexeddb.mjs';
 import { createSyncRepository } from '../lib/run/sync-repository.mjs';
 import { createConflictCopy } from '../lib/run/conflicts.mjs';
+import { freshRuntimeDb } from './runtime-db-test-helper.mjs';
 
 test('enqueue deduplicates by mutation id and keeps the latest mutation payload', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createSyncRepository({ db });
   await repo.enqueue({ id: 'm1', operation: 'upsert', entityType: 'run', entityId: 'r1', createdAt: 1000, payload: { output: 'old' } });
   await repo.enqueue({ id: 'm1', operation: 'upsert', entityType: 'run', entityId: 'r1', createdAt: 2000, payload: { output: 'new' } });
@@ -18,7 +17,7 @@ test('enqueue deduplicates by mutation id and keeps the latest mutation payload'
 });
 
 test('sync error and conflict states are persisted explicitly', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createSyncRepository({ db });
   await repo.enqueue({ id: 'm1', operation: 'upsert', entityType: 'run', entityId: 'r1', createdAt: 1000 });
   await repo.markError('m1', 'offline');
@@ -33,7 +32,7 @@ test('sync error and conflict states are persisted explicitly', async () => {
 });
 
 test('markApplied removes an applied mutation from the pending queue', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createSyncRepository({ db });
   await repo.enqueue({ id: 'm1', operation: 'upsert', entityType: 'run', entityId: 'r1', createdAt: 1000 });
   await repo.markApplied('m1');
