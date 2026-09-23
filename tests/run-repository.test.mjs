@@ -1,9 +1,8 @@
-import 'fake-indexeddb/auto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { openRuntimeDb } from '../lib/run/indexeddb.mjs';
 import { createRunRecord } from '../lib/run/model.mjs';
 import { createRunRepository } from '../lib/run/run-repository.mjs';
+import { freshRuntimeDb } from './runtime-db-test-helper.mjs';
 
 function makeRun(id, { promptId = 'p1', now = 1000 } = {}) {
   return createRunRecord({
@@ -13,7 +12,7 @@ function makeRun(id, { promptId = 'p1', now = 1000 } = {}) {
 }
 
 test('finalize makes execution content immutable', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createRunRepository({ db });
   await repo.create(makeRun('r1'));
   await repo.finalize('r1', { status: 'success', output: 'final', completedAt: 2000 });
@@ -26,7 +25,7 @@ test('finalize makes execution content immutable', async () => {
 });
 
 test('list is newest first and supports prompt/status filtering', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createRunRepository({ db });
   await repo.create(makeRun('r1', { promptId: 'p1', now: 1000 }));
   await repo.create(makeRun('r2', { promptId: 'p2', now: 3000 }));
@@ -40,7 +39,7 @@ test('list is newest first and supports prompt/status filtering', async () => {
 });
 
 test('heartbeat updates active runs but rejects terminal runs', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createRunRepository({ db, now: () => 5000 });
   await repo.create(makeRun('r1'));
   await repo.heartbeat('r1', { ownerSessionId: 'tab-b', heartbeatAt: 4500 });
@@ -52,7 +51,7 @@ test('heartbeat updates active runs but rejects terminal runs', async () => {
 });
 
 test('recoverableActive returns only preparing and running records', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createRunRepository({ db });
   await repo.create(makeRun('preparing'));
   await repo.create(makeRun('running'));
@@ -64,7 +63,7 @@ test('recoverableActive returns only preparing and running records', async () =>
 });
 
 test('storage transaction failures propagate to caller', async () => {
-  const db = await openRuntimeDb();
+  const db = await freshRuntimeDb();
   const repo = createRunRepository({ db });
   db.close();
   await assert.rejects(() => repo.create(makeRun('r1')));
