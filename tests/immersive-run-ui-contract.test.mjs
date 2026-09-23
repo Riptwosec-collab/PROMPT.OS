@@ -57,3 +57,36 @@ test('RunStatus renders textual persistence and sync state rather than fabricate
   assert.match(source, /Waiting to sync/);
   assert.doesNotMatch(source, /fake|mock|estimated cost/i);
 });
+
+test('app requires both execution engine and immersive run gates before wiring the new workspace', () => {
+  const page = read('app/page.jsx');
+  const library = read('components/prompt/PromptLibraryV5.jsx');
+  assert.match(page, /V5_EXECUTION_ENGINE/);
+  assert.match(page, /V5_IMMERSIVE_RUN/);
+  assert.match(page, /executionEnabled/);
+  assert.match(page, /immersiveRunEnabled/);
+  assert.match(library, /executionEnabled\s*&&\s*immersiveRunEnabled/);
+  assert.match(library, /RunWorkspace/);
+});
+
+test('library owns runtime repositories and the Run Workspace rather than cards or details', () => {
+  const library = read('components/prompt/PromptLibraryV5.jsx');
+  const card = read('components/prompt/PromptCardV5.jsx');
+  const detail = read('components/prompt/PromptDetailV2.jsx');
+  assert.match(library, /openRuntimeDb/);
+  assert.match(library, /createRunRepository/);
+  assert.match(library, /createResultRepository/);
+  assert.match(library, /createSyncRepository/);
+  assert.match(library, /<RunWorkspace/);
+  assert.doesNotMatch(card, /openRuntimeDb|createRunRepository|streamAiRun/);
+  assert.doesNotMatch(detail, /openRuntimeDb|createRunRepository|streamAiRun/);
+});
+
+test('Prompt Detail keeps legacy delegated run path and forwards validated inputs to immersive routing', () => {
+  const detail = read('components/prompt/PromptDetailV2.jsx');
+  assert.match(detail, /onRun/);
+  assert.match(detail, /validatePromptVariables/);
+  assert.match(detail, /renderedPrompt:\s*rendered\.text/);
+  assert.match(detail, /await\s+onRun/);
+  assert.match(detail, /setRunError/);
+});
