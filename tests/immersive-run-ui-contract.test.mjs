@@ -39,5 +39,5 @@ test('run telemetry renders only supplied real meta and never invents cost', () 
   }
   assert.match(source, /Number\.isFinite/);
   assert.match(source, /inputTokens[^\n]*outputTokens|outputTokens[^\n]*inputTokens/s);
-  assert.equal(/Estimated Cost|\$\{|cost\s*[:=]/i.test(source), false);
+  assert.equal(/\bcost\b|Estimated Cost/i.test(source), false);
 });
