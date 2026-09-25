@@ -112,3 +112,15 @@ test('the original 30 prompts expose practical Thai Quality V2 explanations with
     }
   }
 });
+
+test('all existing 80 prompts pass the deterministic Quality V2 validator', async () => {
+  const quality = await loadQuality();
+  const catalog = await loadCatalog();
+  assert.ok(quality && catalog);
+  const current80 = catalog.AI_PROMPT_LIBRARY.slice(0, 80);
+  assert.equal(current80.length, 80);
+  for (const prompt of current80) {
+    const result = quality.validateBuiltInPrompt(prompt);
+    assert.equal(result.ok, true, `${prompt.name}: ${JSON.stringify(result.errors)}`);
+  }
+});
