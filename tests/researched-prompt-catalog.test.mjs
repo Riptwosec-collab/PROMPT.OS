@@ -58,11 +58,12 @@ const NEW_PROMPT_NAMES = [
 
 const hasThai = (value) => /[ก-๙]/.test(String(value || ''));
 
-test('catalog contains the original 30 plus all 50 researched prompts', () => {
-  assert.equal(AI_PROMPT_LIBRARY.length, 80);
+test('100-prompt catalog preserves all original 50 researched prompts', () => {
+  assert.equal(AI_PROMPT_LIBRARY.length, 100);
   const names = AI_PROMPT_LIBRARY.map((prompt) => prompt.name);
-  assert.equal(new Set(names).size, 80, 'all prompt names must be unique');
+  assert.equal(new Set(names).size, 100, 'all prompt names must be unique');
   for (const name of NEW_PROMPT_NAMES) assert.ok(names.includes(name), `missing researched prompt: ${name}`);
+  assert.equal(AI_PROMPT_LIBRARY.filter((prompt) => NEW_PROMPT_NAMES.includes(prompt.name)).length, 50);
 });
 
 test('all researched prompts have Thai/English metadata, usage guidance, provenance, and executable variables', () => {
