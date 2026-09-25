@@ -7,7 +7,6 @@ import PromptVariableForm from './PromptVariableForm.jsx';
 import PromptHealth from './PromptHealth.jsx';
 import { validatePromptVariables } from '../../lib/variables/validate-variables.mjs';
 import { renderPromptTemplate } from '../../lib/variables/render-prompt.mjs';
-import { V5_FEATURE_FLAGS } from '../../lib/ui/feature-flags.mjs';
 import {
   getPromptTransitionMode,
   promptGlyphLayoutId,
@@ -19,7 +18,7 @@ export default function PromptDetailV2({
   prompt,
   variablesEnabled = false,
   healthEnabled = false,
-  explainerEnabled: explainerEnabledProp,
+  explainerEnabled = false,
   transitionEnabled = false,
   sourceAvailable = true,
   onClose,
@@ -34,7 +33,6 @@ export default function PromptDetailV2({
   const [running, setRunning] = useState(false);
   const reducedMotion = useReducedMotion();
   const variableConfig = prompt?.variableConfig || {};
-  const explainerEnabled = explainerEnabledProp ?? Boolean(V5_FEATURE_FLAGS.V5_PROMPT_EXPLAINER);
 
   const rendered = useMemo(
     () => renderPromptTemplate(prompt?.prompt || '', variableConfig, values),
