@@ -14,34 +14,17 @@ import { normalizeV5Page, V5_NAV_ITEMS } from '../lib/ui/v5-navigation.mjs';
 
 const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
   ssr: false,
-  loading: () => (
-    <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">
-      BOOTING_PROMPT.OS...
-    </main>
-  ),
+  loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">BOOTING_PROMPT.OS...</main>,
 });
-
 const PromptLibraryV5 = dynamic(() => import('../components/prompt/PromptLibraryV5.jsx'), {
   ssr: false,
-  loading: () => (
-    <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">
-      LOADING_LIBRARY_V5...
-    </main>
-  ),
+  loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">LOADING_LIBRARY_V5...</main>,
 });
-
 const MissionControl = dynamic(() => import('../components/home/MissionControl.jsx'), {
   ssr: false,
-  loading: () => (
-    <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">
-      LOADING_MISSION_CONTROL...
-    </main>
-  ),
+  loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">LOADING_MISSION_CONTROL...</main>,
 });
-
-const CommandPaletteV5 = dynamic(() => import('../components/command/CommandPaletteV5.jsx'), {
-  ssr: false,
-});
+const CommandPaletteV5 = dynamic(() => import('../components/command/CommandPaletteV5.jsx'), { ssr: false });
 
 function PlaceholderPanel({ activePage }) {
   const item = V5_NAV_ITEMS.find((entry) => entry.id === activePage);
@@ -50,9 +33,7 @@ function PlaceholderPanel({ activePage }) {
       <div className="v5-glass max-w-4xl mx-auto rounded-3xl p-6 md:p-10 shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
         <p className="text-[10px] font-mono tracking-[0.3em] text-cyan-300/60">V5 MODULE</p>
         <h2 className="mt-3 text-2xl md:text-4xl font-semibold text-white">{item?.label || 'PROMPT.OS'}</h2>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400">
-          This module is staged behind the V5 rollout plan. The existing prompt library remains available from Library while this module is completed.
-        </p>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-400">This module is staged behind the V5 rollout plan. The existing prompt library remains available from Library while this module is completed.</p>
       </div>
     </section>
   );
@@ -67,14 +48,8 @@ export default function HomePage() {
   const v5CommandPaletteEnabled = Boolean(V5_FEATURE_FLAGS.V5_COMMAND_PALETTE);
   const navigate = useCallback((page) => setActivePage(normalizeV5Page(page)), []);
   const clearLibraryRequest = useCallback(() => setLibraryRequest(null), []);
-  const openLibraryPrompt = useCallback((id) => {
-    setLibraryRequest({ type: 'prompt', id });
-    setActivePage('library');
-  }, []);
-  const openLibraryView = useCallback((viewId) => {
-    setLibraryRequest({ type: 'view', viewId });
-    setActivePage('library');
-  }, []);
+  const openLibraryPrompt = useCallback((id) => { setLibraryRequest({ type: 'prompt', id }); setActivePage('library'); }, []);
+  const openLibraryView = useCallback((viewId) => { setLibraryRequest({ type: 'view', viewId }); setActivePage('library'); }, []);
 
   const openCommandPalette = useCallback(() => {
     if (!V5_FEATURE_FLAGS.V5_COMMAND_PALETTE) return;
@@ -111,6 +86,7 @@ export default function HomePage() {
   const v5PromptDetailEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_DETAIL);
   const v5VariablesEnabled = Boolean(V5_FEATURE_FLAGS.V5_VARIABLES);
   const v5PromptHealthEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_HEALTH);
+  const v5PromptExplainerEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_EXPLAINER);
   const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
   const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
   const v5ExecutionEnabled = Boolean(V5_FEATURE_FLAGS.V5_EXECUTION_ENGINE);
@@ -121,42 +97,21 @@ export default function HomePage() {
   const v5PremiumCardsEnabled = Boolean(V5_FEATURE_FLAGS.V5_PREMIUM_CARDS);
   const v5SharedPromptTransitionEnabled = Boolean(V5_FEATURE_FLAGS.V5_SHARED_PROMPT_TRANSITION);
 
-  if (!v5ShellEnabled) {
-    return (
-      <LanguageRuntime>
-        <PromptOS />
-      </LanguageRuntime>
-    );
-  }
+  if (!v5ShellEnabled) return <LanguageRuntime><PromptOS /></LanguageRuntime>;
 
   return (
     <LanguageRuntime>
       <V5FeatureFlagProvider>
-        <AppShell
-          activePage={activePage}
-          onNavigate={navigate}
-          onOpenCommand={v5CommandPaletteEnabled ? openCommandPalette : undefined}
-          status={status}
-          visualSystemEnabled={v5VisualSystemEnabled}
-        >
+        <AppShell activePage={activePage} onNavigate={navigate} onOpenCommand={v5CommandPaletteEnabled ? openCommandPalette : undefined} status={status} visualSystemEnabled={v5VisualSystemEnabled}>
           {activePage === 'home' && v5MissionControlEnabled ? (
-            <MissionControl
-              onOpenCommand={openCommandPalette}
-              onOpenPrompt={openLibraryPrompt}
-              onOpenPack={openLibraryView}
-              onOpenCollection={openLibraryView}
-              onNavigate={navigate}
-              cloudStatus={null}
-              usageEnabled={v5UsageAnalyticsEnabled}
-              healthEnabled={v5PromptHealthEnabled}
-              smartCollectionsEnabled={v5SmartCollectionsEnabled}
-            />
+            <MissionControl onOpenCommand={openCommandPalette} onOpenPrompt={openLibraryPrompt} onOpenPack={openLibraryView} onOpenCollection={openLibraryView} onNavigate={navigate} cloudStatus={null} usageEnabled={v5UsageAnalyticsEnabled} healthEnabled={v5PromptHealthEnabled} smartCollectionsEnabled={v5SmartCollectionsEnabled} />
           ) : activePage === 'library' ? (
             v5SearchEnabled ? (
               <PromptLibraryV5
                 detailEnabled={v5PromptDetailEnabled}
                 variablesEnabled={v5VariablesEnabled}
                 healthEnabled={v5PromptHealthEnabled}
+                explainerEnabled={v5PromptExplainerEnabled}
                 workspaceEnabled={v5WorkspaceEnabled}
                 smartCollectionsEnabled={v5SmartCollectionsEnabled}
                 executionEnabled={v5ExecutionEnabled}
@@ -166,21 +121,10 @@ export default function HomePage() {
                 externalRequest={libraryRequest}
                 onExternalRequestHandled={clearLibraryRequest}
               />
-            ) : (
-              <div className="v5-legacy-frame h-full">
-                <PromptOS />
-              </div>
-            )
-          ) : (
-            <PlaceholderPanel activePage={activePage} />
-          )}
+            ) : <div className="v5-legacy-frame h-full"><PromptOS /></div>
+          ) : <PlaceholderPanel activePage={activePage} />}
         </AppShell>
-        <CommandPaletteV5
-          open={v5CommandPaletteEnabled && commandPaletteOpen}
-          items={commandItems}
-          onClose={() => setCommandPaletteOpen(false)}
-          onExecute={executeCommandItem}
-        />
+        <CommandPaletteV5 open={v5CommandPaletteEnabled && commandPaletteOpen} items={commandItems} onClose={() => setCommandPaletteOpen(false)} onExecute={executeCommandItem} />
       </V5FeatureFlagProvider>
     </LanguageRuntime>
   );
