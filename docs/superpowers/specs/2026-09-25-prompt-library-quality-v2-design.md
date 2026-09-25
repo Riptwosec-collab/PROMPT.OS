@@ -63,8 +63,6 @@ Use **static structured prompt metadata + deterministic validation**.
 
 Each prompt owns human-authored metadata that explains the prompt in Thai. The UI renders that metadata directly. Runtime AI is not used to explain built-in prompts.
 
-Architecture:
-
 ```text
 Prompt Catalog Spec
     │
@@ -88,7 +86,7 @@ Prompt Catalog Spec
 
 ## 6. Prompt Metadata Contract
 
-Built-in prompts should expose the following fields after normalization:
+Built-in prompts expose these fields after normalization:
 
 ```js
 {
@@ -98,24 +96,20 @@ Built-in prompts should expose the following fields after normalization:
   displayTitleTh,
   description,
   descriptionTh,
-
   purposeTh,
   useCasesTh,
   inputGuideTh,
   expectedOutputTh,
   exampleInputTh,
   usageGuideTh,
-
   category,
   subcategory,
   tags,
-
   prompt,
   variables,
   variableConfig,
   outputFormat,
   compatibleModels,
-
   catalogManaged,
   catalogVersion,
   version
@@ -125,16 +119,16 @@ Built-in prompts should expose the following fields after normalization:
 ### Field Rules
 
 `descriptionTh`
-: One short sentence that answers “พรอมต์นี้คืออะไร”.
+: One short sentence answering “พรอมต์นี้คืออะไร”.
 
 `purposeTh`
-: Two to four concise sentences explaining what the prompt helps the user accomplish and important boundaries.
+: Two to four concise sentences explaining what the prompt helps accomplish and important boundaries.
 
 `useCasesTh`
-: Array of practical situations, normally 3–6 items.
+: Array of 3–6 practical situations.
 
 `inputGuideTh`
-: Structured guidance keyed by variable name.
+: Guidance keyed by variable name.
 
 ```js
 inputGuideTh: {
@@ -147,45 +141,26 @@ inputGuideTh: {
 : Array describing the concrete sections/results the user should expect.
 
 `exampleInputTh`
-: Short realistic example. It must not contain secrets, production credentials, fabricated source claims, or unsafe instructions.
+: Short realistic example without secrets, production credentials, fabricated source claims, or unsafe instructions.
 
 `usageGuideTh`
-: Existing Thai usage guidance remains supported and can be generated from structured metadata where appropriate.
+: Existing Thai usage guidance remains supported and may be generated from structured metadata where appropriate.
 
 ## 7. Thai Language Policy
 
-Thai explanations must prioritize understanding over literal translation.
+Thai explanations prioritize understanding over literal translation.
 
-Keep technical terms in English when translating would reduce precision, including examples such as:
+Keep technical terms in English when translation would reduce precision, including VLAN, Trunk, OSPF, BGP, API, JSON, SQL, React, Docker, Git, RADIUS, 802.1X, Token, and Latency.
 
-- VLAN
-- Trunk
-- OSPF
-- BGP
-- API
-- JSON
-- SQL
-- React
-- Docker
-- Git
-- RADIUS
-- 802.1X
-- Token
-- Latency
-
-Good:
+Good example:
 
 > ตรวจ ACL เพื่อหากฎที่ block traffic พร้อมอธิบาย source, destination, protocol และ port ที่ได้รับผลกระทบ
-
-Avoid unnatural literal translations of established technical terms.
 
 Thai text must not imply capabilities the application does not have.
 
 ## 8. Variable Presentation
 
 Extend variable metadata without breaking the current validator.
-
-Recommended normalized variable shape:
 
 ```js
 {
@@ -201,20 +176,18 @@ Recommended normalized variable shape:
 
 Existing keys remain valid. Thai keys are additive.
 
-### Variable Type Rules
+Rules:
 
-- Long evidence/source/code fields use `textarea`.
-- Small numeric controls use `number`.
-- Language remains a select.
-- Tone remains a select where applicable.
-- Boolean-like choices should use select/toggle only when a real choice exists.
-- Do not require fields that are not actually referenced by the executable prompt.
+- long evidence/source/code fields use `textarea`;
+- small numeric controls use `number`;
+- language remains a select;
+- tone remains a select where applicable;
+- boolean-like choices use select/toggle only when a real choice exists;
+- do not require fields that are not referenced by the executable prompt.
 
-## 9. Prompt Detail V2 Presentation
+## 9. Prompt Detail Presentation
 
-Prompt Detail should surface the explanation before the raw rendered template.
-
-Recommended information hierarchy:
+Prompt Detail surfaces the explanation before the raw rendered template.
 
 ```text
 Title TH
@@ -245,13 +218,11 @@ Rendered Prompt
 [Run Prompt]
 ```
 
-Desktop may keep the existing multi-column layout, but the explanation must be readable without forcing the user to inspect the raw prompt.
-
-Mobile remains single-column and touch friendly.
+Desktop may keep the existing multi-column layout. Mobile remains single-column and touch friendly.
 
 ## 10. Execution Contract
 
-A prompt is “usable” only when it satisfies all of these conditions:
+A prompt is “usable” only when all conditions below hold:
 
 1. It contains a concrete task.
 2. Required placeholders are declared in `variableConfig`.
@@ -261,25 +232,19 @@ A prompt is “usable” only when it satisfies all of these conditions:
 6. Missing source material causes the prompt to ask only for the missing source rather than fabricate analysis.
 7. Output instructions are explicit enough to produce a useful result.
 8. The prompt does not depend on unavailable product capabilities.
-9. The prompt is compatible with the current `PromptDetailV2` and Phase 4 `RunWorkspace` flow.
-10. It passes the catalog quality tests defined below.
+9. The prompt is compatible with `PromptDetailV2` and Phase 4 `RunWorkspace`.
+10. It passes the catalog quality tests.
 
 ## 11. Quality Validator
 
-Add a deterministic built-in prompt quality validator used by tests and optionally by development tooling.
-
-Conceptual interface:
+Add a deterministic built-in prompt quality validator used by tests and optionally development tooling.
 
 ```js
 validateBuiltInPrompt(prompt)
-// => {
-//   ok: boolean,
-//   errors: [],
-//   warnings: []
-// }
+// => { ok: boolean, errors: [], warnings: [] }
 ```
 
-Errors should include:
+Errors include:
 
 - missing ID/name/title;
 - duplicate ID;
@@ -292,17 +257,17 @@ Errors should include:
 - missing expected output guidance;
 - missing executable task;
 - invalid default value for select/number fields;
-- non-array metadata where arrays are required.
+- invalid metadata shapes.
 
-Warnings may include overly long titles or descriptions, but warnings must not silently change prompt content.
+Warnings may include overly long titles/descriptions, but warnings never silently rewrite content.
 
 ## 12. Catalog Migration Policy
 
 ### Preserve Existing 80
 
-All existing built-in prompt IDs must remain unchanged.
+All existing built-in prompt IDs remain unchanged.
 
-Catalog merging must continue to preserve user state including:
+Catalog merging continues to preserve user state including:
 
 - favorite;
 - pinned;
@@ -310,38 +275,38 @@ Catalog merging must continue to preserve user state including:
 - copy count;
 - run count;
 - results;
-- created date when already present;
+- existing created date;
 - user collections;
-- existing entered variable values where compatible.
+- entered variable values where compatible.
 
 ### Metadata Upgrade
 
-Catalog-managed fields may update to the new Quality V2 definition.
+Catalog-managed fields may update to Quality V2 definitions.
 
-When executable prompt content changes, existing catalog version/history behavior must continue to create a built-in catalog upgrade record rather than silently erase the previous template.
+When executable prompt content changes, existing catalog version/history behavior creates a built-in catalog upgrade record rather than silently erasing the prior template.
 
 ### Variable Changes
 
-If a variable is renamed, migration must be explicit. Prefer keeping existing variable keys and improving only `labelTh/helpTh` unless the current key is objectively unusable.
+Variable renames require explicit migration. Prefer preserving existing variable keys and improving only `labelTh/helpTh` unless a key is objectively unusable.
 
 ## 13. Catalog Version
 
-Bump the built-in catalog version to a new dated Quality V2 identifier, for example:
+Bump the built-in catalog version to:
 
 ```text
 2026-09-25-ai-library-quality-v2-100
 ```
 
-Version numbering must make the 80 → 100 catalog transition inspectable.
+This makes the 80 → 100 transition inspectable.
 
 ## 14. Twenty New Built-In Prompts
 
-Add exactly these 20 high-value prompts unless implementation review finds a duplicate with an existing catalog prompt. If a duplicate exists, replace it with another prompt from the same domain rather than adding duplicate intent.
+The new set is intentionally chosen to avoid obvious overlap with existing built-ins such as `Professional Code Reviewer`, `Bug Hunter`, `Deep Research Assistant`, `Meeting Summarizer`, `Action Item Extractor`, and `Personal AI Tutor`.
 
 ### Network & IT Operations
 
 1. **Network Incident Fault Isolation**
-   - Inputs: `incident`, `logs`, optional context encoded in those fields
+   - Inputs: `incident`, `logs`
    - Output: evidence summary, failure domain, hypotheses, next commands/actions
 
 2. **Cisco Switch Port Troubleshooter**
@@ -350,15 +315,15 @@ Add exactly these 20 high-value prompts unless implementation review finds a dup
 
 3. **Wi-Fi / 802.1X / NAC Troubleshooter**
    - Inputs: `symptoms`, `logs`, `environment`
-   - Output: auth path analysis, likely failure domain, verification steps
+   - Output: authentication path analysis, failure domain, verification steps
 
 4. **Firewall / ACL Traffic Analyzer**
    - Inputs: `traffic_flow`, `acl_or_rules`, `logs`
-   - Output: matched rules, blocked/allowed reasoning, safe validation steps
+   - Output: rule-match reasoning, blocked/allowed path, safe validation steps
 
 5. **VPN Troubleshooter**
    - Inputs: `vpn_type`, `symptoms`, `logs`
-   - Output: tunnel phase analysis, routing/NAT/auth checks, next actions
+   - Output: tunnel-phase analysis, routing/NAT/auth checks, next actions
 
 ### Security
 
@@ -370,23 +335,23 @@ Add exactly these 20 high-value prompts unless implementation review finds a dup
    - Inputs: `email_content`, `headers`, `context`
    - Output: indicators, suspicious patterns, uncertainty, safe next steps
 
-### Software Engineering
+### Engineering & DevOps
 
-8. **Bug Root Cause Investigator**
-   - Inputs: `problem`, `code`, `logs`
-   - Output: evidence-backed root cause candidates, tests, minimal fix direction
+8. **CI/CD Pipeline Failure Analyzer**
+   - Inputs: `pipeline`, `logs`, `recent_changes`
+   - Output: failing stage, evidence, probable failure domain, verification steps
 
-9. **Code Review & Risk Audit**
-   - Inputs: `code`, `requirements`
-   - Output: correctness, security, performance, maintainability findings
+9. **Production Deployment Readiness Reviewer**
+   - Inputs: `change_summary`, `test_evidence`, `deployment_plan`, `rollback_plan`
+   - Output: readiness gaps, release risks, missing evidence, rollback concerns
 
 10. **API Integration Debugger**
     - Inputs: `request`, `response`, `code`, `expected_behavior`
     - Output: failure layer, contract mismatch, auth/input/output checks
 
-11. **SQL Query Optimizer**
+11. **SQL Query Performance Diagnoser**
     - Inputs: `query`, `schema`, `execution_context`
-    - Output: bottlenecks, index/query suggestions, correctness risks
+    - Output: bottlenecks, query/index opportunities, correctness and measurement cautions
 
 ### Data & Business Analysis
 
@@ -396,27 +361,27 @@ Add exactly these 20 high-value prompts unless implementation review finds a dup
 
 13. **KPI Movement Root Cause Analyzer**
     - Inputs: `metric`, `time_range`, `data`, `context`
-    - Output: verified movement, segments/drivers, hypotheses vs evidence
+    - Output: verified movement, segments/drivers, evidence vs hypotheses
 
-### Research
+### Research & Decision Support
 
-14. **Research Source Verifier**
-    - Inputs: `claim`, `sources`
-    - Output: source-by-source evidence, agreement/conflict, uncertainty
+14. **Evidence Matrix Builder**
+    - Inputs: `question`, `sources`, `evaluation_criteria`
+    - Output: claim/source matrix, supporting/conflicting evidence, gaps, uncertainty
 
-15. **Deep Research Brief Builder**
-    - Inputs: `topic`, `objectives`, `constraints`
-    - Output: research plan, evidence matrix, findings, open questions
+15. **Requirements Trade-off Analyzer**
+    - Inputs: `options`, `requirements`, `constraints`, `evidence`
+    - Output: factual comparison by requirement, conflicts, dependencies, unknowns without inventing a winner
 
-### Productivity & Communication
+### Operations & Communication
 
-16. **Meeting Notes to Action Plan**
-    - Inputs: `notes`, `context`
-    - Output: decisions, owners, actions, deadlines only when stated
+16. **Incident Postmortem Builder**
+    - Inputs: `timeline`, `impact`, `evidence`, `actions`
+    - Output: factual timeline, impact, contributing factors, follow-up actions, unanswered questions
 
 17. **Professional Message & Email Builder**
     - Inputs: `goal`, `context`, `tone`
-    - Output: send-ready draft with no invented facts
+    - Output: send-ready draft without invented facts
 
 ### Travel & Planning
 
@@ -428,29 +393,31 @@ Add exactly these 20 high-value prompts unless implementation review finds a dup
 
 19. **Public Company Research Brief**
     - Inputs: `company`, `research_goal`, `sources`
-    - Output: factual business/financial summary, catalysts/risks as sourced facts, uncertainty
+    - Output: factual business/financial summary, sourced catalysts/risks, uncertainty
     - Must not output personalized buy/sell instructions.
 
 ### Learning
 
-20. **Skill Learning Roadmap Builder**
-    - Inputs: `skill`, `current_level`, `goal`, `time_available`
-    - Output: staged roadmap, exercises, milestones, verification criteria
+20. **Certification Study Planner**
+    - Inputs: `certification`, `current_level`, `exam_date`, `time_available`
+    - Output: topic roadmap, lab/practice schedule, milestones, readiness checks
+
+These 20 names/intents are fixed for the implementation plan. If implementation audit proves one is semantically duplicate with an existing built-in not identified during design review, implementation must stop that prompt addition and replace it with a same-domain alternative in the written plan before product code for that prompt is added. The final invariant remains exactly 20 unique additions and exactly 100 built-ins.
 
 ## 15. Duplicate Prevention
 
-Prompt uniqueness must be checked on at least:
+Prompt uniqueness is checked on:
 
 - `id`;
 - normalized `name`;
 - normalized `displayTitle`;
-- intent-level duplication during implementation review.
+- intent-level duplication during pre-implementation catalog audit.
 
 Do not create multiple prompts that only differ by wording while performing the same task.
 
 ## 16. Existing Prompt Audit
 
-All existing 80 built-ins must be audited, not merely auto-translated.
+All existing 80 built-ins are audited, not merely auto-translated.
 
 For each prompt:
 
@@ -465,11 +432,11 @@ For each prompt:
 9. retain original identity;
 10. run deterministic quality validation.
 
-The audit should prefer improving metadata over rewriting executable prompt text unless the existing template is objectively incomplete or unusable.
+Prefer improving metadata over rewriting executable prompt text unless the current template is incomplete or unusable.
 
 ## 17. Translation Fallback
 
-`translateComplete()` remains useful for global UI strings and legacy fallback, but Quality V2 built-ins should not rely solely on generic translation mappings for their explanations.
+`translateComplete()` remains useful for global UI strings and legacy fallback, but Quality V2 built-ins do not rely solely on generic translation mappings.
 
 Priority:
 
@@ -480,24 +447,22 @@ explicit prompt metadata
   > English source
 ```
 
-This avoids awkward machine-like explanations.
-
 ## 18. Search and Discovery
 
-Thai metadata should participate in prompt search where the existing search architecture supports searchable text fields.
+Thai metadata participates in prompt search where the existing search architecture supports searchable text fields.
 
-At minimum users should be able to find prompts by:
+At minimum users can find prompts by:
 
 - Thai title;
 - English title;
 - Thai description;
 - category/tags.
 
-If expanding the search index to all long explanation fields materially affects performance, keep search limited to title/description/tags in this release.
+Long explanation fields are not added to the index unless required; title/description/tags are sufficient for this release.
 
 ## 19. Feature Flag Policy
 
-The richer explanation UI should be independently gateable during rollout with a new default-off flag:
+The richer explanation UI is independently gateable with a new default-off flag:
 
 ```text
 V5_PROMPT_EXPLAINER
@@ -507,9 +472,9 @@ When disabled:
 
 - existing Prompt Detail presentation remains available;
 - execution behavior remains unchanged;
-- no explanation UI is required to run prompts.
+- explanation UI is not required to run prompts.
 
-The 100-prompt catalog itself is a catalog release rather than a presentation experiment. Once this feature branch is explicitly merged, exactly 100 built-ins become the intended catalog baseline.
+The 100-prompt catalog is a catalog release, not a presentation experiment. Once this feature branch is explicitly merged, exactly 100 built-ins become the intended baseline.
 
 No `NEO_MODE` or parallel global mode is introduced.
 
@@ -517,36 +482,36 @@ No `NEO_MODE` or parallel global mode is introduced.
 
 ### Missing Thai Metadata
 
-Catalog quality tests fail before merge. Runtime may fall back to English for user-created/imported prompts, but built-ins must satisfy the Thai metadata contract.
+Catalog quality tests fail before merge. User-created/imported prompts may fall back to English, but built-ins must satisfy the Thai contract.
 
 ### Bad Variable Metadata
 
-A built-in prompt with placeholder/config mismatch is a test failure and must not be silently repaired at runtime.
+A built-in prompt with placeholder/config mismatch is a test failure and is not silently repaired at runtime.
 
 ### User-Created Prompts
 
-Do not require Quality V2 metadata from user-created/imported prompts. Existing user prompt compatibility is preserved.
+Quality V2 metadata is not mandatory for user-created/imported prompts. Existing compatibility is preserved.
 
 ### Catalog Merge
 
-Malformed new catalog entries must not overwrite existing user records during catalog merge tests.
+Malformed new catalog entries must not overwrite existing user records during merge tests.
 
 ## 21. Accessibility
 
 - Explanation headings use semantic hierarchy.
-- Lists render as lists rather than decorative text.
-- Variable help text is associated with its input.
+- Lists render as lists.
+- Variable help is associated with its input.
 - Required status is programmatically available.
 - Examples are selectable text.
-- No explanation depends on color alone.
-- Mobile controls keep current touch-size requirements.
+- No meaning depends on color alone.
+- Mobile controls preserve current touch-size requirements.
 - New UI honors reduced motion.
 
 ## 22. Testing Strategy
 
 ### Catalog Count and Identity
 
-Tests must assert:
+Tests assert:
 
 - exactly 100 built-in prompts;
 - no duplicate IDs/names;
@@ -555,7 +520,7 @@ Tests must assert:
 
 ### Metadata Coverage
 
-For each built-in:
+For every built-in:
 
 - non-empty `displayTitleTh`;
 - non-empty `descriptionTh`;
@@ -567,7 +532,7 @@ For each built-in:
 
 ### Executability
 
-For each built-in:
+For every built-in:
 
 - extract placeholders;
 - compare with variable config;
@@ -579,7 +544,7 @@ For each built-in:
 
 ### Catalog Merge Regression
 
-Tests must verify:
+Tests verify:
 
 - favorites/pins/runs/results survive upgrade;
 - old IDs map to upgraded catalog definitions;
@@ -589,56 +554,57 @@ Tests must verify:
 
 ### UI Contract
 
-Tests must cover:
+Tests cover:
 
 - Thai explanation sections render when flag enabled;
 - legacy Prompt Detail fallback remains when flag disabled;
 - input help maps to the correct variable;
-- Run continues to use existing validated/rendered prompt path;
+- Run continues to use the existing validated/rendered prompt path;
 - mobile order remains logical.
 
-### Regression
+### Final Regression
 
-Run the entire repository test suite, OpenNext build, artifact verification, and Wrangler bundle dry-run before PR completion.
+Run the complete repository test suite, OpenNext build, artifact verification, and Wrangler bundle dry-run before PR completion.
 
-## 23. Files Expected to Change
+## 23. Expected Implementation Areas
 
-Likely implementation areas:
+Likely areas:
 
 ```text
 lib/prompts/ai-prompt-library.mjs
 lib/prompts/catalog/*.mjs
-lib/prompts/catalog/quality-v2*.mjs        (new prompts or metadata helpers)
-lib/prompts/quality-validator.mjs           (new)
+lib/prompts/catalog/quality-v2*.mjs
+lib/prompts/quality-validator.mjs
 components/prompt/PromptDetailV2.jsx
 components/prompt/PromptVariableForm.jsx
-lib/search/...                              (only if required for Thai discovery)
+lib/search/... (only if required)
 lib/ui/feature-flags.mjs
 .env.example
 tests/prompt-*.test.mjs
 tests/feature-flags.test.mjs
 ```
 
-Exact file decomposition is deferred to the implementation plan after written-spec approval.
+Exact decomposition belongs in the implementation plan after written-spec approval.
 
 ## 24. Rollout and Compatibility
 
 1. Implement on a separate feature branch.
 2. Use TDD RED → GREEN per implementation task.
-3. Keep explanation UI behind `V5_PROMPT_EXPLAINER=false` by default.
+3. Keep `V5_PROMPT_EXPLAINER=false` by default.
 4. Validate catalog migration from existing stored Prompt.OS data.
 5. Open a Draft PR.
 6. Do not merge without a separate explicit `merge` command.
 7. Do not manually production-deploy the new feature branch.
-8. After explicit merge, Cloudflare Git integration may deploy `main` automatically; manual deployment remains a separate action only when explicitly needed.
+8. After explicit merge, Cloudflare Git integration may deploy `main` automatically; manual deployment remains separate when explicitly needed.
 
 ## 25. Security and Reliability
 
 - Never place secrets in examples.
 - Never ask a prompt to expose credentials/tokens/private keys.
-- Security prompts should be defensive analysis and troubleshooting.
-- Financial research prompts must separate sourced facts, analysis, and uncertainty.
-- Prompt metadata must never claim live/current data unless the execution environment actually provides it.
+- Security prompts remain defensive analysis/troubleshooting.
+- Financial research prompts separate sourced facts, analysis, and uncertainty.
+- Political prompts, if any existing prompt touches politics, remain neutral and informational; this release adds no persuasion prompt.
+- Prompt metadata never claims live/current data unless execution actually supplies it.
 - Do not fabricate citations.
 - Do not invent telemetry, costs, latency, or model behavior.
 
@@ -654,8 +620,8 @@ Before Phase completion:
 - [ ] Required variables have Thai labels/help.
 - [ ] No unresolved required placeholders with valid fixtures.
 - [ ] Prompt Detail explains purpose/use/input/output/example.
-- [ ] Existing Run Workspace is reused unchanged as execution boundary unless a small adapter is required.
-- [ ] No user prompt is forced into the built-in metadata schema.
+- [ ] Existing Run Workspace remains the execution boundary unless a small adapter is required.
+- [ ] User prompts are not forced into the built-in metadata schema.
 - [ ] Catalog merge preserves user state.
 - [ ] `V5_PROMPT_EXPLAINER` defaults false.
 - [ ] Full tests pass.
@@ -667,6 +633,6 @@ Before Phase completion:
 
 ## 27. Next Gate
 
-After the user reviews and approves this written spec, the only next step is to invoke the planning workflow and write the detailed implementation plan.
+After the user reviews and approves this written spec, the only next step is the planning workflow to write the detailed implementation plan.
 
 Implementation must not start from this design document alone.
