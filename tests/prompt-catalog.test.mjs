@@ -10,6 +10,8 @@ const EXPECTED_NAMES = [
   'MEETING_SUMMARIZER', 'ACTION_ITEM_EXTRACTOR', 'PRESENTATION_BUILDER', 'PERSONAL_TUTOR', 'QUIZ_GENERATOR',
 ];
 
+const EXPECTED_IDS_30 = EXPECTED_NAMES.map((name) => `ai-lib-${name.toLowerCase().replace(/_/g, '-')}`);
+
 async function loadCatalog() {
   try {
     return await import('../lib/prompts/ai-prompt-library.mjs');
@@ -30,6 +32,7 @@ test('AI Prompt Library preserves the original 30 prompts and expands to 80 uniq
   assert.equal(new Set(names).size, 80, 'Prompt names must be unique');
   assert.equal(new Set(titles).size, 80, 'Display titles must be unique');
   assert.deepEqual(names.slice(0, 30), EXPECTED_NAMES);
+  assert.deepEqual(ids.slice(0, 30), EXPECTED_IDS_30, 'original 30 IDs must remain stable');
 });
 
 test('the original 30 catalog prompts keep the existing executable metadata contract', async () => {
@@ -62,6 +65,28 @@ test('the original 30 catalog prompts keep the existing executable metadata cont
 
     for (const name of detected) {
       assert.equal(prompt.variableConfig[name]?.required, true, `${prompt.name}.${name} must be required`);
+    }
+  }
+});
+
+test('the original 30 expose explicit Quality V2 Thai explanations without changing identity', async () => {
+  const catalog = await loadCatalog();
+  assert.ok(catalog);
+  const original = catalog.AI_PROMPT_LIBRARY.slice(0, 30);
+  assert.deepEqual(original.map((prompt) => prompt.id), EXPECTED_IDS_30);
+
+  for (const prompt of original) {
+    assert.match(prompt.displayTitleTh || '', /[ก-๙]/, `${prompt.name} missing Thai title`);
+    assert.match(prompt.descriptionTh || '', /[ก-๙]/, `${prompt.name} missing Thai description`);
+    assert.match(prompt.purposeTh || '', /[ก-๙]/, `${prompt.name} missing Thai purpose`);
+    assert.ok(Array.isArray(prompt.useCasesTh) && prompt.useCasesTh.length >= 1, `${prompt.name} missing use cases`);
+    assert.ok(Array.isArray(prompt.expectedOutputTh) && prompt.expectedOutputTh.length >= 1, `${prompt.name} missing expected output`);
+    assert.match(prompt.exampleInputTh || '', /[ก-๙]/, `${prompt.name} missing Thai example`);
+    for (const [name, field] of Object.entries(prompt.variableConfig || {})) {
+      if (!field.required) continue;
+      assert.ok(field.labelTh?.trim(), `${prompt.name}.${name} missing labelTh`);
+      assert.ok(field.helpTh?.trim(), `${prompt.name}.${name} missing helpTh`);
+      if (name !== 'language') assert.ok(prompt.inputGuideTh?.[name]?.trim(), `${prompt.name}.${name} missing inputGuideTh`);
     }
   }
 });
