@@ -91,3 +91,13 @@ test('catalog validator reports duplicate IDs without mutating prompts', async (
   assert.ok(result.errors.some((item) => item.code === 'duplicate-id'));
   assert.equal(first.name, 'TEST');
 });
+
+test('all existing 80 built-ins satisfy the Quality V2 contract', async () => {
+  const quality = await loadQuality();
+  const catalog = await import('../lib/prompts/ai-prompt-library.mjs');
+  assert.ok(quality);
+  assert.equal(catalog.AI_PROMPT_LIBRARY.length, 80);
+
+  const result = quality.validatePromptCatalog(catalog.AI_PROMPT_LIBRARY);
+  assert.equal(result.ok, true, JSON.stringify(result.errors.slice(0, 12), null, 2));
+});
