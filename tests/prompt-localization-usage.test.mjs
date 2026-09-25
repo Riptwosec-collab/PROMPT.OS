@@ -5,7 +5,7 @@ import { AI_PROMPT_LIBRARY } from '../lib/prompts/ai-prompt-library.mjs';
 import { translateCatalogThai } from '../lib/i18n/catalog-th.mjs';
 
 test('all built-in prompts expose explicit Thai metadata and bilingual usage instructions', () => {
-  assert.equal(AI_PROMPT_LIBRARY.length, 80);
+  assert.equal(AI_PROMPT_LIBRARY.length, 100);
 
   for (const prompt of AI_PROMPT_LIBRARY) {
     for (const key of ['displayTitleTh', 'descriptionTh', 'usageGuideTh', 'usageGuideEn']) {
@@ -27,8 +27,8 @@ test('all built-in prompts expose explicit Thai metadata and bilingual usage ins
   }
 });
 
-test('researched prompts preserve their source-pack sample input separately from the usage guide slot', () => {
-  const researched = AI_PROMPT_LIBRARY.slice(30);
+test('the original researched 50 preserve their source-pack sample input separately from the usage guide slot', () => {
+  const researched = AI_PROMPT_LIBRARY.filter((prompt) => Array.isArray(prompt.sourceInspiration));
   assert.equal(researched.length, 50);
   for (const prompt of researched) {
     assert.equal(typeof prompt.sampleInput, 'string', `${prompt.name} missing sampleInput`);
