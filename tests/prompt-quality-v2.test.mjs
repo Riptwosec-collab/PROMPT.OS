@@ -9,6 +9,14 @@ async function loadQuality() {
   }
 }
 
+async function loadCatalog() {
+  try {
+    return await import('../lib/prompts/ai-prompt-library.mjs');
+  } catch {
+    return null;
+  }
+}
+
 const valid = {
   id: 'ai-lib-test',
   name: 'TEST',
@@ -74,4 +82,33 @@ test('catalog validator ignores user-created prompts and catches duplicate built
   assert.equal(result.ok, false);
   assert.ok(result.errors.some((item) => item.code === 'duplicate-id'));
   assert.equal(result.results.some((item) => item.id === 'user-1'), false);
+});
+
+test('the original 30 prompts expose practical Thai Quality V2 explanations without changing identity', async () => {
+  const catalog = await loadCatalog();
+  assert.ok(catalog);
+  const core = catalog.AI_PROMPT_LIBRARY.slice(0, 30);
+  assert.equal(core.length, 30);
+  const expectedNames = [
+    'DEEP_RESEARCH_ASSISTANT', 'FACT_CHECKER', 'ARTICLE_ANALYZER', 'PAPER_ANALYZER', 'SOURCE_COMPARATOR',
+    'CODE_REVIEWER', 'BUG_HUNTER', 'UNIT_TEST_GENERATOR', 'CODE_OPTIMIZER', 'TIME_COMPLEXITY_ANALYZER',
+    'REGEX_GENERATOR', 'DOCKER_GENERATOR', 'API_DESIGNER', 'DATABASE_SCHEMA_DESIGNER', 'JSON_EXTRACTOR',
+    'TABLE_EXTRACTOR', 'SENTIMENT_ANALYZER', 'DATA_CLASSIFIER', 'IMAGE_OBJECT_ANALYZER', 'IMAGE_TO_JSON',
+    'VIDEO_QA', 'AUDIO_TRANSCRIBER', 'BLOG_GENERATOR', 'SEO_CONTENT_WRITER', 'SOCIAL_CONTENT_GENERATOR',
+    'MEETING_SUMMARIZER', 'ACTION_ITEM_EXTRACTOR', 'PRESENTATION_BUILDER', 'PERSONAL_TUTOR', 'QUIZ_GENERATOR',
+  ];
+  assert.deepEqual(core.map((prompt) => prompt.name), expectedNames);
+  for (const prompt of core) {
+    assert.match(prompt.displayTitleTh || '', /[ก-๙]/, `${prompt.name} missing Thai title`);
+    assert.match(prompt.descriptionTh || '', /[ก-๙]/, `${prompt.name} missing Thai description`);
+    assert.match(prompt.purposeTh || '', /[ก-๙]/, `${prompt.name} missing Thai purpose`);
+    assert.ok(Array.isArray(prompt.useCasesTh) && prompt.useCasesTh.length >= 3, `${prompt.name} missing practical use cases`);
+    assert.ok(Array.isArray(prompt.expectedOutputTh) && prompt.expectedOutputTh.length >= 2, `${prompt.name} missing expected output`);
+    assert.match(prompt.exampleInputTh || '', /[ก-๙]/, `${prompt.name} missing Thai example`);
+    for (const [name, field] of Object.entries(prompt.variableConfig || {})) {
+      if (!field.required) continue;
+      assert.match(field.labelTh || '', /[ก-๙]/, `${prompt.name}.${name} missing Thai label`);
+      assert.match(field.helpTh || '', /[ก-๙]/, `${prompt.name}.${name} missing Thai help`);
+    }
+  }
 });
