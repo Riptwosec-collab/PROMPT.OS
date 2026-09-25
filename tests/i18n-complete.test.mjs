@@ -80,8 +80,8 @@ test('the original 30 built-in prompt cards keep dictionary-backed Thai renderin
 });
 
 test('the 50 researched prompts carry direct Thai title, description, usage, category, and variable labels', () => {
-  assert.equal(AI_PROMPT_LIBRARY.length, 80);
-  const researchedPrompts = AI_PROMPT_LIBRARY.slice(30);
+  assert.equal(AI_PROMPT_LIBRARY.length, 100);
+  const researchedPrompts = AI_PROMPT_LIBRARY.slice(30, 80);
   assert.equal(researchedPrompts.length, 50);
 
   const missing = [];

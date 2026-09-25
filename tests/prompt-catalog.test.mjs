@@ -18,17 +18,17 @@ async function loadCatalog() {
   }
 }
 
-test('AI Prompt Library preserves the original 30 prompts and expands to 80 unique prompts', async () => {
+test('AI Prompt Library preserves the original 30 prompts and expands to 100 unique prompts', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog, 'Expected lib/prompts/ai-prompt-library.mjs to exist');
-  assert.equal(catalog.AI_PROMPT_LIBRARY.length, 80);
+  assert.equal(catalog.AI_PROMPT_LIBRARY.length, 100);
 
   const ids = catalog.AI_PROMPT_LIBRARY.map((prompt) => prompt.id);
   const names = catalog.AI_PROMPT_LIBRARY.map((prompt) => prompt.name);
   const titles = catalog.AI_PROMPT_LIBRARY.map((prompt) => prompt.displayTitle);
-  assert.equal(new Set(ids).size, 80, 'Prompt IDs must be unique');
-  assert.equal(new Set(names).size, 80, 'Prompt names must be unique');
-  assert.equal(new Set(titles).size, 80, 'Display titles must be unique');
+  assert.equal(new Set(ids).size, 100, 'Prompt IDs must be unique');
+  assert.equal(new Set(names).size, 100, 'Prompt names must be unique');
+  assert.equal(new Set(titles).size, 100, 'Display titles must be unique');
   assert.deepEqual(names.slice(0, 30), EXPECTED_NAMES);
 });
 
@@ -95,7 +95,7 @@ test('catalog upgrade refreshes managed templates while preserving user activity
     variables: { topic: 'Zero Trust', language: '' },
   };
   const merged = catalog.mergePromptCatalog([legacyManaged], catalog.AI_PROMPT_LIBRARY);
-  assert.equal(merged.length, 80);
+  assert.equal(merged.length, 100);
   assert.notEqual(merged[0].prompt, 'LEGACY BUILT-IN TEMPLATE');
   assert.match(merged[0].prompt, /INPUT VALIDATION/);
   assert.equal(merged[0].favorite, true);
@@ -107,13 +107,14 @@ test('catalog upgrade refreshes managed templates while preserving user activity
   assert.equal(merged[0].variables.language, 'Thai');
 });
 
-test('variable field inference supports note requirements', async () => {
+test('variable field inference supports Quality V2 requirements', async () => {
   const catalog = await loadCatalog();
   assert.ok(catalog);
   assert.equal(catalog.getVariableInputKind('count'), 'number');
   assert.equal(catalog.getVariableInputKind('slides'), 'number');
   assert.equal(catalog.getVariableInputKind('content'), 'textarea');
   assert.equal(catalog.getVariableInputKind('code'), 'textarea');
+  assert.equal(catalog.getVariableInputKind('logs'), 'textarea');
   assert.equal(catalog.getVariableInputKind('language'), 'language');
   assert.equal(catalog.getVariableInputKind('tone'), 'tone');
   assert.equal(catalog.getVariableInputKind('topic'), 'text');

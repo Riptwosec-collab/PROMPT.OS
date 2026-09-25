@@ -65,6 +65,7 @@ export default function PromptLibraryV5({
   detailEnabled = false,
   variablesEnabled = false,
   healthEnabled = false,
+  explainerEnabled = false,
   workspaceEnabled = false,
   smartCollectionsEnabled = false,
   executionEnabled = false,
@@ -321,6 +322,7 @@ export default function PromptLibraryV5({
               prompt={selectedPrompt}
               variablesEnabled={variablesEnabled}
               healthEnabled={healthEnabled}
+              explainerEnabled={explainerEnabled}
               transitionEnabled={sharedTransitionEnabled}
               sourceAvailable={sourceAvailable}
               onClose={closePrompt}
