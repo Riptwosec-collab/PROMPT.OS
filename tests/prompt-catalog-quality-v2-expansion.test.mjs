@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AI_PROMPT_LIBRARY, PROMPT_CATALOG_VERSION } from '../lib/prompts/ai-prompt-library.mjs';
+import { AI_PROMPT_LIBRARY, PROMPT_CATALOG_VERSION, mergePromptCatalog } from '../lib/prompts/ai-prompt-library.mjs';
 import { BASELINE_PROMPT_IDS_80 } from './fixtures/prompt-catalog-baseline-80.mjs';
 import { validatePromptCatalog } from '../lib/prompts/quality-validator.mjs';
 
@@ -56,4 +56,37 @@ test('all 100 built-ins satisfy the deterministic Quality V2 metadata contract',
   const result = validatePromptCatalog(AI_PROMPT_LIBRARY);
   assert.equal(result.ok, true, JSON.stringify(result.errors.slice(0, 10)));
   assert.equal(result.results.length, 100);
+});
+
+test('80 to 100 catalog merge preserves user state and appends new prompts once', () => {
+  const stored80 = AI_PROMPT_LIBRARY.slice(0, 80).map((prompt, index) => ({
+    ...prompt,
+    favorite: index === 0,
+    pinned: index === 0,
+    rating: index === 0 ? 4 : 0,
+    copyCount: index === 0 ? 3 : 0,
+    runs: index === 0 ? 7 : 0,
+    results: index === 0 ? [{ id: 'r1', content: 'kept' }] : [],
+    createdAt: index === 0 ? '2025-01-01T00:00:00.000Z' : prompt.createdAt,
+    collections: index === 0 ? [...prompt.collections, 'My Important Prompts'] : prompt.collections,
+    variables: index === 0 ? { ...prompt.variables, topic: 'Zero Trust', language: '' } : prompt.variables,
+  }));
+
+  const once = mergePromptCatalog(stored80, AI_PROMPT_LIBRARY);
+  const twice = mergePromptCatalog(once, AI_PROMPT_LIBRARY);
+  assert.equal(once.length, 100);
+  assert.equal(twice.length, 100);
+  assert.deepEqual(twice.map((prompt) => prompt.id), once.map((prompt) => prompt.id));
+
+  const upgraded = once.find((prompt) => prompt.id === BASELINE_PROMPT_IDS_80[0]);
+  assert.equal(upgraded.favorite, true);
+  assert.equal(upgraded.pinned, true);
+  assert.equal(upgraded.rating, 4);
+  assert.equal(upgraded.copyCount, 3);
+  assert.equal(upgraded.runs, 7);
+  assert.equal(upgraded.results[0].content, 'kept');
+  assert.equal(upgraded.createdAt, '2025-01-01T00:00:00.000Z');
+  assert.ok(upgraded.collections.includes('My Important Prompts'));
+  assert.equal(upgraded.variables.topic, 'Zero Trust');
+  assert.equal(upgraded.variables.language, 'Thai');
 });
