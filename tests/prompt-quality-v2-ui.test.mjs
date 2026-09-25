@@ -22,16 +22,18 @@ test('Prompt Detail exposes flag-gated Thai explanation sections before executio
   assert.match(source, /useCasesTh/);
   assert.match(source, /expectedOutputTh/);
   assert.match(source, /exampleInputTh/);
+  assert.match(source, /V5_FEATURE_FLAGS\.V5_PROMPT_EXPLAINER/);
 });
 
-test('V5_PROMPT_EXPLAINER is a granular default-off flag wired page to library to detail', () => {
+test('V5_PROMPT_EXPLAINER is granular and default-off while legacy detail remains available', () => {
   const flags = read('lib/ui/feature-flags.mjs');
   const page = read('app/page.jsx');
-  const library = read('components/prompt/PromptLibraryV5.jsx');
+  const detail = read('components/prompt/PromptDetailV2.jsx');
   const env = read('.env.example');
   assert.match(flags, /V5_PROMPT_EXPLAINER/);
   assert.match(flags, /NEXT_PUBLIC_V5_PROMPT_EXPLAINER/);
   assert.match(page, /v5PromptExplainerEnabled/);
-  assert.match(library, /explainerEnabled/);
+  assert.match(detail, /explainerEnabledProp \?\? Boolean\(V5_FEATURE_FLAGS\.V5_PROMPT_EXPLAINER\)/);
   assert.match(env, /NEXT_PUBLIC_V5_PROMPT_EXPLAINER=false/);
+  assert.match(detail, /explainerEnabled \? \(/);
 });
