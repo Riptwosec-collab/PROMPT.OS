@@ -7,6 +7,7 @@ import { V5FeatureFlagProvider } from '../components/V5FeatureFlagProvider.jsx';
 import AppShell from '../components/shell/AppShell.jsx';
 import { AI_PROMPT_LIBRARY } from '../lib/prompts/ai-prompt-library.mjs';
 import { loadPromptCatalogState } from '../lib/prompts/client-store.mjs';
+import { createDerivedDraft } from '../lib/studio/customize.mjs';
 import { buildCommandItems } from '../lib/ui/command-items.mjs';
 import { shouldHandleShortcut } from '../lib/ui/command-palette.mjs';
 import { V5_FEATURE_FLAGS } from '../lib/ui/feature-flags.mjs';
@@ -28,6 +29,7 @@ export default function HomePage() {
   const [libraryRequest, setLibraryRequest] = useState(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [commandItems, setCommandItems] = useState([]);
+  const [studioInitialDraft, setStudioInitialDraft] = useState(null);
 
   const v5CommandPaletteEnabled = Boolean(V5_FEATURE_FLAGS.V5_COMMAND_PALETTE);
   const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
@@ -48,7 +50,10 @@ export default function HomePage() {
   const v5PromptStudioEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_STUDIO);
   const navigationItems = useMemo(() => buildReleaseNavItems({ dailyUseEnabled: v5DailyUseEnabled, studioEnabled: v5PromptStudioEnabled }), [v5DailyUseEnabled, v5PromptStudioEnabled]);
 
-  const navigate = useCallback((page) => setActivePage(normalizeV5Page(page)), []);
+  const navigate = useCallback((page) => {
+    if (page === 'studio') setStudioInitialDraft(null);
+    setActivePage(normalizeV5Page(page));
+  }, []);
   const clearLibraryRequest = useCallback(() => setLibraryRequest(null), []);
   const openLibraryPrompt = useCallback((id) => { setLibraryRequest({ type: 'prompt', id }); setActivePage('library'); }, []);
   const openLibraryView = useCallback((viewId) => { setLibraryRequest({ type: 'view', viewId }); setActivePage('library'); }, []);
@@ -69,6 +74,25 @@ export default function HomePage() {
     else if (action.type === 'navigate') navigate(action.page);
     else if (action.type === 'action' && action.name === 'new-prompt') navigate(v5PromptStudioEnabled ? 'studio' : 'library');
   }, [navigate, openLibraryPrompt, v5PromptStudioEnabled]);
+
+  useEffect(() => {
+    if (!v5PromptStudioEnabled || typeof window === 'undefined') return undefined;
+    const handleCustomize = (event) => {
+      const requested = event?.detail?.prompt;
+      if (!requested?.id) return;
+      const builtIn = AI_PROMPT_LIBRARY.find((prompt) => String(prompt.id) === String(requested.id));
+      if (!builtIn) return;
+      try {
+        const derivedDraft = createDerivedDraft(builtIn);
+        setStudioInitialDraft(derivedDraft);
+        setActivePage('studio');
+      } catch {
+        // Keep the source prompt untouched and remain on the current surface if draft creation fails.
+      }
+    };
+    window.addEventListener('prompt-os:customize', handleCustomize);
+    return () => window.removeEventListener('prompt-os:customize', handleCustomize);
+  }, [v5PromptStudioEnabled]);
 
   useEffect(() => {
     if (!v5CommandPaletteEnabled) return undefined;
@@ -96,7 +120,7 @@ export default function HomePage() {
           {activePage === 'home' && v5MissionControlEnabled ? (
             <MissionControl onOpenCommand={openCommandPalette} onOpenPrompt={openLibraryPrompt} onOpenPack={openLibraryView} onOpenCollection={openLibraryView} onNavigate={navigate} cloudStatus={null} usageEnabled={v5UsageAnalyticsEnabled} healthEnabled={v5PromptHealthEnabled} smartCollectionsEnabled={v5SmartCollectionsEnabled} />
           ) : activePage === 'studio' && v5PromptStudioEnabled ? (
-            <PromptStudio onClose={() => navigate('library')} />
+            <PromptStudio initialDraft={studioInitialDraft} onClose={() => navigate('library')} />
           ) : runtimePage ? (
             v5SearchEnabled || activePage !== 'library' ? (
               <PromptLibraryV5 detailEnabled={v5PromptDetailEnabled} variablesEnabled={v5VariablesEnabled} healthEnabled={v5PromptHealthEnabled} explainerEnabled={v5PromptExplainerEnabled} workspaceEnabled={v5WorkspaceEnabled} smartCollectionsEnabled={v5SmartCollectionsEnabled} executionEnabled={v5ExecutionEnabled} immersiveRunEnabled={v5ImmersiveRunEnabled} premiumCardsEnabled={v5PremiumCardsEnabled} sharedTransitionEnabled={v5PromptDetailEnabled && v5SharedPromptTransitionEnabled} dailyUseEnabled={v5DailyUseEnabled} dailyUseView={activePage} externalRequest={libraryRequest} onExternalRequestHandled={clearLibraryRequest} onOpenPrompt={handleRuntimeOpenPrompt} />
