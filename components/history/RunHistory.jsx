@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { serializeArtifacts } from '../../lib/export/artifact-export.mjs';
+import { useV5FeatureFlags } from '../V5FeatureFlagProvider.jsx';
 
 function downloadText(filename, text, type = 'text/plain;charset=utf-8') {
   const blob = new Blob([text], { type });
@@ -18,6 +19,7 @@ function statusLabel(status) {
 }
 
 export default function RunHistory({ runRepository, onOpenPrompt }) {
+  const flags = useV5FeatureFlags();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [items, setItems] = useState([]);
@@ -63,6 +65,16 @@ export default function RunHistory({ runRepository, onOpenPrompt }) {
     downloadText(`prompt-os-run-history.${ext}`, text, format === 'json' ? 'application/json' : 'text/plain;charset=utf-8');
   };
 
+  const compareSelected = () => {
+    if (!flags.V5_PROMPT_STUDIO || selectedItems.length !== 2 || typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('prompt-os:compare', {
+      detail: {
+        left: { kind: 'run', record: selectedItems[0] },
+        right: { kind: 'run', record: selectedItems[1] },
+      },
+    }));
+  };
+
   const deleteSelected = async () => {
     if (!selectedItems.length || !runRepository?.delete) return;
     if (!window.confirm(`Delete ${selectedItems.length} selected Run records? Saved Results are not deleted.`)) return;
@@ -93,6 +105,7 @@ export default function RunHistory({ runRepository, onOpenPrompt }) {
           </label>
           <div className="flex flex-wrap items-end gap-2">
             <button type="button" onClick={() => exportSelected('json')} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200">Export</button>
+            {flags.V5_PROMPT_STUDIO ? <button type="button" onClick={compareSelected} disabled={selectedItems.length !== 2} className="min-h-11 rounded-xl border border-violet-300/20 px-3 text-xs text-violet-100 disabled:opacity-40">Compare selected</button> : null}
             <button type="button" onClick={deleteSelected} disabled={!selectedItems.length} className="min-h-11 rounded-xl border border-rose-300/20 px-3 text-xs text-rose-100 disabled:opacity-40">Delete selected</button>
           </div>
         </div>
