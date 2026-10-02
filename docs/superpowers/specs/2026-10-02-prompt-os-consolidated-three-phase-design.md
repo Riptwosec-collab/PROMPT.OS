@@ -82,17 +82,17 @@ One coherent release containing Builder, drafts, versioning, Customize built-in,
 ### PR C — Control Center
 One coherent release containing Mission Control V2, real analytics, storage/sync health, failure center, backup/restore, and cloud adapter readiness.
 
-No separate design/spec/plan is required for each of these three PRs after this master design and master implementation plan are approved. Each PR still receives its own final verification and explicit merge command.
+No separate design/spec/plan is required for each of these three PRs after this master design and master implementation plan are approved. After the master plan is approved and the execution method is selected once, implementation proceeds PR A -> PR B -> PR C. Each PR still receives its own final verification and explicit merge command, but no repeated architecture/spec/planning cycle is required unless hidden complexity materially changes the approved architecture.
 
 ## 5. Phase 1 — Daily Use Complete
 
 ### 5.1 Goal
 
-A user should be able to discover a prompt, understand it, try a real example, run it, preserve the result, find it later, compare or export it, and recover from common execution/storage failures without leaving the normal workflow.
+A user should be able to discover a prompt, understand it, try a real example, run it, preserve the result, find it later, export it, and recover from common execution/storage failures without leaving the normal workflow.
 
 ### 5.2 Example Run / Auto-Fill
 
-Every built-in prompt already has Quality V2 example metadata. Add a deterministic example-value map derived from explicit structured example values, not free-text parsing at click time.
+Every built-in prompt already has Quality V2 example metadata. Add an explicit structured `exampleValues` map keyed by variable name. The UI must use this structured data directly and must not parse `exampleInputTh` or other prose at click time.
 
 User actions:
 - `ลองด้วยตัวอย่าง / Try Example`
@@ -103,6 +103,7 @@ Behavior:
 - It never mutates the canonical built-in prompt.
 - Required values must produce a valid rendered prompt.
 - Example data must be testable for all 100 built-ins.
+- `exampleInputTh` remains human-readable explanatory content; `exampleValues` is the executable example contract.
 - If a prompt lacks a usable structured example after migration, the action is hidden rather than fabricated.
 
 ### 5.3 Run History
@@ -153,8 +154,9 @@ Supported metadata actions:
 - Open source Prompt
 - Duplicate as a new Saved Result
 - Export
-- Compare
 - Delete Result metadata/artifact without deleting source Run
+
+`Compare` is a Phase 2 capability. Phase 1 must not expose a working Compare action before the Phase 2 compare engine exists; the action stays hidden or explicitly unavailable until its feature gate is enabled.
 
 Snapshot content remains immutable.
 
@@ -190,16 +192,18 @@ Extend existing Run Workspace with:
 - `Follow output` control restores following
 - `Ctrl/Cmd + S` saves a terminal Result
 - `Esc` closes only when safe; active runs require explicit Stop/Close behavior so an accidental Esc does not silently abandon work
-- Result toolbar: Copy / Save / Retry / Regenerate / Export / Compare when available
+- Result toolbar: Copy / Save / Retry / Regenerate / Export
+- Compare action may appear only after the Phase 2 compare capability is enabled
 - session state preserved when returning from Run to Prompt Detail
 
 ### 5.8 Quick Actions
 
-Prompt card/detail quick actions:
+Prompt card/detail quick actions in Phase 1:
 - Run
 - Try Example
 - Favorite
-- Customize (becomes fully functional in Phase 2)
+
+`Customize` is a Phase 2 capability and remains hidden/disabled until Prompt Studio is enabled.
 
 No destructive swipe gestures.
 
@@ -670,7 +674,7 @@ If a merged release has a UI regression:
 - revert the phase merge commit if required
 - local stored records must remain backward readable whenever feasible
 
-No production deployment is implied by merge. Deployment happens only after explicit user command.
+No production deployment is implied by manual deploy tooling. If the repository's Git integration automatically deploys `main` after a merge, that automatic deployment is treated as a consequence of the explicit merge command and must be verified rather than duplicated with a second manual deploy. Manual deployment still requires an explicit user command.
 
 ## 15. Out of Scope for These Three Releases
 
