@@ -17,22 +17,24 @@ test('daily navigation adds separate History and Saved Results destinations with
   assert.equal(normalizeV5Page('results'), 'results');
 });
 
-test('History workspace exposes search filters pagination selection export and explicit delete, with no Compare action', () => {
+test('History workspace exposes search filters pagination selection export delete and Studio-gated Compare', () => {
   const source = read('components/history/RunHistory.jsx');
   for (const token of ['Run History', 'Search history', 'Status', 'Load more', 'Export', 'Delete selected']) assert.ok(source.includes(token), `missing ${token}`);
   assert.match(source, /runRepository\.listPage/);
   assert.match(source, /window\.confirm/);
-  assert.doesNotMatch(source, /Compare/);
+  assert.match(source, /V5_PROMPT_STUDIO/);
+  assert.match(source, /prompt-os:compare/);
   assert.doesNotMatch(source, /openRuntimeDb|indexedDB/);
 });
 
-test('Saved Results workspace exposes immutable artifacts plus metadata actions and no Phase 2 Compare action', () => {
+test('Saved Results workspace exposes immutable artifacts, metadata actions and Studio-gated Compare', () => {
   const source = read('components/results/SavedResults.jsx');
   for (const token of ['Saved Results', 'Search results', 'Pin', 'Tags', 'Notes', 'Duplicate', 'Export', 'Delete']) assert.ok(source.includes(token), `missing ${token}`);
   assert.match(source, /resultRepository\.listPage/);
   assert.match(source, /updateMetadata/);
   assert.match(source, /duplicate/);
-  assert.doesNotMatch(source, /Compare/);
+  assert.match(source, /V5_PROMPT_STUDIO/);
+  assert.match(source, /prompt-os:compare/);
   assert.doesNotMatch(source, /openRuntimeDb|indexedDB/);
 });
 
