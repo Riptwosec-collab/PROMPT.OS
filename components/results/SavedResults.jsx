@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { serializeArtifact, serializeArtifacts } from '../../lib/export/artifact-export.mjs';
+import { useV5FeatureFlags } from '../V5FeatureFlagProvider.jsx';
 
 function downloadText(filename, text, type = 'text/plain;charset=utf-8') {
   const blob = new Blob([text], { type });
@@ -14,6 +15,7 @@ function downloadText(filename, text, type = 'text/plain;charset=utf-8') {
 }
 
 export default function SavedResults({ resultRepository, onOpenPrompt }) {
+  const flags = useV5FeatureFlags();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
@@ -71,6 +73,16 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
     downloadText('prompt-os-saved-results.json', serializeArtifacts(source.map((record) => ({ kind: 'result', record })), 'json'), 'application/json');
   };
 
+  const compareSelected = () => {
+    if (!flags.V5_PROMPT_STUDIO || selectedItems.length !== 2 || typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('prompt-os:compare', {
+      detail: {
+        left: { kind: 'result', record: selectedItems[0] },
+        right: { kind: 'result', record: selectedItems[1] },
+      },
+    }));
+  };
+
   const deleteOne = async (item) => {
     if (!window.confirm(`Delete Saved Result “${item.name || item.resultId}”? The source Run will remain.`)) return;
     await resultRepository.delete(item.resultId);
@@ -94,6 +106,7 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
         <div className="v5-glass flex flex-wrap gap-2 rounded-2xl p-3">
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search results" aria-label="Search results" className="min-h-11 min-w-56 flex-1 rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus:border-violet-300/40" />
           <button type="button" onClick={exportSelected} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200">Export</button>
+          {flags.V5_PROMPT_STUDIO ? <button type="button" onClick={compareSelected} disabled={selectedItems.length !== 2} className="min-h-11 rounded-xl border border-violet-300/20 px-3 text-xs text-violet-100 disabled:opacity-40">Compare selected</button> : null}
         </div>
 
         {error ? <div role="alert" className="rounded-xl border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-100">{error}</div> : null}
