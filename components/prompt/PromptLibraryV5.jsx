@@ -7,6 +7,8 @@ import PromptDetailV2 from './PromptDetailV2.jsx';
 import PromptCardV5 from './PromptCardV5.jsx';
 import PromptPacks from './PromptPacks.jsx';
 import RunWorkspace from './RunWorkspace.jsx';
+import RunHistory from '../history/RunHistory.jsx';
+import SavedResults from '../results/SavedResults.jsx';
 import WorkspaceSidebar from '../workspace/WorkspaceSidebar.jsx';
 import { AI_PROMPT_LIBRARY } from '../../lib/prompts/ai-prompt-library.mjs';
 import { buildSmartCollections } from '../../lib/prompts/smart-collections.mjs';
@@ -72,6 +74,8 @@ export default function PromptLibraryV5({
   immersiveRunEnabled = false,
   premiumCardsEnabled = false,
   sharedTransitionEnabled = false,
+  dailyUseEnabled = false,
+  dailyUseView = 'library',
   externalRequest = null,
   onExternalRequestHandled,
   onOpenPrompt,
@@ -104,6 +108,7 @@ export default function PromptLibraryV5({
   const runOriginRef = useRef(null);
   const reducedMotion = useReducedMotion();
   const immersiveModeEnabled = executionEnabled && immersiveRunEnabled;
+  const runtimeNeeded = immersiveModeEnabled || dailyUseEnabled;
 
   useEffect(() => {
     const { prompts: loadedPrompts, database } = loadPromptCatalogState(browserStorage(), AI_PROMPT_LIBRARY, STORAGE_KEY);
@@ -113,7 +118,7 @@ export default function PromptLibraryV5({
   }, []);
 
   useEffect(() => {
-    if (!immersiveModeEnabled) {
+    if (!runtimeNeeded) {
       setRunRequest(null);
       setRunRuntime((current) => current.state === 'idle' ? current : {
         state: 'idle', db: null, runRepository: null, resultRepository: null, syncRepository: null, latestRecoveredRun: null, error: null,
@@ -162,7 +167,7 @@ export default function PromptLibraryV5({
       cancelled = true;
       openedDb?.close();
     };
-  }, [immersiveModeEnabled]);
+  }, [runtimeNeeded]);
 
   useEffect(() => {
     const handleSearchShortcut = (event) => {
@@ -299,7 +304,8 @@ export default function PromptLibraryV5({
   };
 
   const showDiscovery = workspaceEnabled || smartCollectionsEnabled;
-  const detailVisible = detailEnabled && selectedPrompt;
+  const dailySurface = dailyUseEnabled && (dailyUseView === 'history' || dailyUseView === 'results');
+  const detailVisible = !dailySurface && detailEnabled && selectedPrompt;
   const runHandler = immersiveModeEnabled ? openImmersiveRun : onRunPrompt;
   const runRuntimeReady = runRuntime.state === 'ready'
     && runRuntime.runRepository
@@ -309,7 +315,22 @@ export default function PromptLibraryV5({
   return (
     <LayoutGroup id="premium-prompt-experience">
       <AnimatePresence initial={false}>
-        {detailVisible ? (
+        {dailySurface ? (
+          <motion.div
+            key={`daily-${dailyUseView}`}
+            className="h-full"
+            initial={reducedMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reducedMotion ? 0 : 0.12 }}
+          >
+            {dailyUseView === 'history' ? (
+              <RunHistory runRepository={runRuntime.runRepository} onOpenPrompt={openPrompt} />
+            ) : (
+              <SavedResults resultRepository={runRuntime.resultRepository} onOpenPrompt={openPrompt} />
+            )}
+          </motion.div>
+        ) : detailVisible ? (
           <motion.div
             key={`detail-${selectedPrompt.id}`}
             className="h-full"
@@ -363,13 +384,13 @@ export default function PromptLibraryV5({
                     <span className="rounded-full border border-cyan-400/20 bg-cyan-400/5 px-3 py-1 text-[10px] font-mono text-cyan-200">SEARCH V2</span>
                   </header>
 
-                  {immersiveModeEnabled && runRuntime.state === 'error' ? (
+                  {runtimeNeeded && runRuntime.state === 'error' ? (
                     <div role="alert" className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-3 text-xs text-amber-100">
                       Local Run storage unavailable: {runRuntime.error}
                     </div>
                   ) : null}
 
-                  {immersiveModeEnabled && runRuntime.latestRecoveredRun ? (
+                  {runtimeNeeded && runRuntime.latestRecoveredRun ? (
                     <details className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.05] p-3 text-xs text-amber-100">
                       <summary className="cursor-pointer font-medium">Interrupted run recovered — view latest partial output</summary>
                       <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-black/20 p-3 text-[11px] leading-5 text-slate-300">{runRuntime.latestRecoveredRun.output || 'No partial output was checkpointed.'}</pre>
