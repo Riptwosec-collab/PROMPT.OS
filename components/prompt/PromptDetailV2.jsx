@@ -7,6 +7,7 @@ import PromptVariableForm from './PromptVariableForm.jsx';
 import PromptHealth from './PromptHealth.jsx';
 import { validatePromptVariables } from '../../lib/variables/validate-variables.mjs';
 import { renderPromptTemplate } from '../../lib/variables/render-prompt.mjs';
+import { exampleValuesForPrompt, clearValuesForPrompt } from '../../lib/prompts/example-values.mjs';
 import {
   getPromptTransitionMode,
   promptGlyphLayoutId,
@@ -19,6 +20,7 @@ export default function PromptDetailV2({
   variablesEnabled = false,
   healthEnabled = false,
   explainerEnabled = false,
+  exampleEnabled = false,
   transitionEnabled = false,
   sourceAvailable = true,
   onClose,
@@ -49,6 +51,7 @@ export default function PromptDetailV2({
   const fadeDuration = reducedMotion ? 0 : 0.16;
   const bodyDelay = sharedTransition && !reducedMotion ? 0.05 : 0;
   const title = prompt.displayTitleTh || prompt.displayTitle || prompt.title || prompt.name;
+  const hasExample = exampleEnabled && prompt.exampleValues && Object.keys(prompt.exampleValues).length > 0;
 
   const run = async () => {
     if (variablesEnabled) {
@@ -82,6 +85,18 @@ export default function PromptDetailV2({
     } catch {
       setRunError('Copy failed.');
     }
+  };
+
+  const applyExample = () => {
+    setValues(exampleValuesForPrompt(prompt));
+    setFieldErrors({});
+    setRunError('');
+  };
+
+  const clearExample = () => {
+    setValues(clearValuesForPrompt(prompt));
+    setFieldErrors({});
+    setRunError('');
   };
 
   return (
@@ -152,10 +167,18 @@ export default function PromptDetailV2({
             </aside>
 
             <main data-region="inputs" className="v5-glass order-2 rounded-2xl border border-white/10 p-4">
-              <div className="mb-4">
-                <p className="text-[10px] font-mono tracking-[0.2em] text-cyan-300/60">INPUTS</p>
-                <h2 className="mt-1 text-lg font-semibold text-white">Prompt Variables</h2>
-                <p className="mt-1 text-xs text-slate-500">Required fields are marked with *.</p>
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-mono tracking-[0.2em] text-cyan-300/60">INPUTS</p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">Prompt Variables</h2>
+                  <p className="mt-1 text-xs text-slate-500">Required fields are marked with *.</p>
+                </div>
+                {hasExample ? (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={applyExample} className="min-h-11 rounded-xl border border-cyan-300/25 bg-cyan-300/[0.06] px-3 text-xs text-cyan-100">Try Example</button>
+                    <button type="button" onClick={clearExample} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-300">Clear Example</button>
+                  </div>
+                ) : null}
               </div>
               {variablesEnabled ? (
                 <>
