@@ -144,6 +144,16 @@ export default function PromptStudio({
     setVersions(await activeVersionRepository.list(draft.promptId));
   };
 
+  const compareVersion = (version) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('prompt-os:compare', {
+      detail: {
+        left: { kind: 'draft', record: draft },
+        right: { kind: 'version', record: version },
+      },
+    }));
+  };
+
   return (
     <section data-prompt-studio className="h-full overflow-y-auto p-3 md:p-6" aria-labelledby="prompt-studio-title">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -174,7 +184,7 @@ export default function PromptStudio({
               <label className="text-xs text-slate-400">Status<select value={versionStatus} onChange={(event) => setVersionStatus(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-[#09101d] px-3 text-xs text-slate-200"><option value={VERSION_STATUS.STABLE}>Stable</option><option value={VERSION_STATUS.EXPERIMENTAL}>Experimental</option><option value={VERSION_STATUS.ARCHIVED}>Archived</option></select></label>
             </div>
             <label className="mt-3 block text-xs text-slate-400">Change note<textarea value={changeNote} onChange={(event) => setChangeNote(event.target.value)} rows={3} className="mt-1 w-full resize-y rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-slate-200 outline-none" /></label>
-            {versions.length ? <ul className="mt-4 space-y-2">{versions.map((version) => <li key={version.versionId} className="rounded-xl border border-white/10 p-3 text-xs text-slate-300"><div className="flex flex-wrap items-center justify-between gap-2"><span>v{version.versionNumber} · {version.status} · {version.label}</span><div className="flex gap-2"><button type="button" onClick={() => restoreVersion(version)} className="min-h-11 rounded-lg border border-cyan-300/20 px-3 text-cyan-100">Restore</button>{version.status !== VERSION_STATUS.ARCHIVED ? <button type="button" onClick={() => archiveVersion(version.versionId)} className="min-h-11 rounded-lg border border-white/10 px-3 text-slate-300">Archive</button> : null}</div></div>{version.changeNote ? <p className="mt-2 text-slate-500">{version.changeNote}</p> : null}</li>)}</ul> : <p className="mt-4 text-xs text-slate-500">No versions yet.</p>}
+            {versions.length ? <ul className="mt-4 space-y-2">{versions.map((version) => <li key={version.versionId} className="rounded-xl border border-white/10 p-3 text-xs text-slate-300"><div className="flex flex-wrap items-center justify-between gap-2"><span>v{version.versionNumber} · {version.status} · {version.label}</span><div className="flex flex-wrap gap-2"><button type="button" onClick={() => compareVersion(version)} className="min-h-11 rounded-lg border border-violet-300/20 px-3 text-violet-100">Compare</button><button type="button" onClick={() => restoreVersion(version)} className="min-h-11 rounded-lg border border-cyan-300/20 px-3 text-cyan-100">Restore</button>{version.status !== VERSION_STATUS.ARCHIVED ? <button type="button" onClick={() => archiveVersion(version.versionId)} className="min-h-11 rounded-lg border border-white/10 px-3 text-slate-300">Archive</button> : null}</div></div>{version.changeNote ? <p className="mt-2 text-slate-500">{version.changeNote}</p> : null}</li>)}</ul> : <p className="mt-4 text-xs text-slate-500">No versions yet.</p>}
           </section>
         ) : null}
       </div>
