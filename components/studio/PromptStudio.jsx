@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { AI_PROMPT_LIBRARY } from '../../lib/prompts/ai-prompt-library.mjs';
 import {
   createDraft,
   DRAFT_SECTION_KEYS,
@@ -8,6 +9,7 @@ import {
   updateDraftRaw,
   updateDraftSection,
 } from '../../lib/studio/draft-model.mjs';
+import { findRelatedPrompts } from '../../lib/studio/related-prompts.mjs';
 import { runPromptTestSuite } from '../../lib/studio/test-lab.mjs';
 import { createVersionSnapshot, VERSION_STATUS } from '../../lib/studio/version-model.mjs';
 import { openStudioRuntime } from '../../lib/studio/runtime.mjs';
@@ -98,6 +100,10 @@ export default function PromptStudio({
 
   const preview = useMemo(() => draft.rawPrompt || '', [draft.rawPrompt]);
   const testLab = useMemo(() => runPromptTestSuite({ draft }), [draft]);
+  const relatedPrompts = useMemo(() => {
+    const source = draft.sourceBuiltInSnapshot;
+    return source?.id ? findRelatedPrompts(source, AI_PROMPT_LIBRARY, { limit: 4 }) : [];
+  }, [draft.sourceBuiltInSnapshot]);
   const changeSection = (key, value) => setDraft((current) => updateDraftSection(current, key, value));
   const changeRaw = (value) => setDraft((current) => updateDraftRaw(current, value));
 
@@ -176,7 +182,7 @@ export default function PromptStudio({
         {mode === 'Structured' ? <div className="grid gap-3 md:grid-cols-2">{DRAFT_SECTION_KEYS.map((key) => <label key={key} className="v5-glass rounded-2xl border border-white/10 p-3 text-xs text-slate-400"><span className="mb-2 block font-medium text-slate-200">{SECTION_LABELS[key]}</span><textarea value={String(draft.sections[key] ?? '')} onChange={(event) => changeSection(key, event.target.value)} rows={key === 'context' || key === 'examples' ? 6 : 4} className="w-full resize-y rounded-xl border border-white/10 bg-black/20 p-3 text-sm leading-6 text-slate-200 outline-none focus:border-violet-300/40" /></label>)}</div> : null}
         {mode === 'Raw' ? <textarea value={draft.rawPrompt} onChange={(event) => changeRaw(event.target.value)} rows={24} className="v5-glass min-h-[60vh] w-full resize-y rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs leading-6 text-slate-200 outline-none focus:border-violet-300/40" aria-label="Raw prompt" /> : null}
         {mode === 'Preview' ? <pre className="v5-glass min-h-[50vh] whitespace-pre-wrap rounded-2xl border border-white/10 p-5 text-sm leading-7 text-slate-300">{preview || 'Start writing your prompt.'}</pre> : null}
-        {mode === 'Test Lab' ? <PromptQualityCenter checks={testLab.checks} title="Prompt Test Lab & Quality Center" /> : null}
+        {mode === 'Test Lab' ? <div className="space-y-4"><PromptQualityCenter checks={testLab.checks} title="Prompt Test Lab & Quality Center" />{relatedPrompts.length ? <section className="v5-glass rounded-2xl border border-white/10 p-4"><p className="text-[10px] font-mono uppercase tracking-[0.18em] text-cyan-300/60">RELATED PROMPTS</p><h2 className="mt-1 text-sm font-semibold text-white">Deterministic relationships</h2><p className="mt-1 text-xs text-slate-500">Matched from category, tags and source metadata only.</p><ul className="mt-3 grid gap-2 md:grid-cols-2">{relatedPrompts.map((prompt) => <li key={prompt.id} className="rounded-xl border border-white/10 p-3 text-xs text-slate-300"><span className="font-medium text-white">{prompt.displayTitleTh || prompt.displayTitle || prompt.name}</span><span className="mt-1 block text-[10px] text-slate-500">{prompt.category || 'Uncategorized'}</span></li>)}</ul></section> : null}</div> : null}
         {mode === 'Versions' ? (
           <section className="v5-glass rounded-2xl border border-white/10 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
