@@ -9,6 +9,7 @@ import StatusHud from './StatusHud.jsx';
 import MobileDock from './MobileDock.jsx';
 import CreateActionSheet from './CreateActionSheet.jsx';
 import PageTransition from './PageTransition.jsx';
+import { V5_NAV_ITEMS } from '../../lib/ui/v5-navigation.mjs';
 
 export default function AppShell({
   activePage,
@@ -23,6 +24,7 @@ export default function AppShell({
   toasts = [],
   onDismissToast,
   visualSystemEnabled = false,
+  navigationItems = V5_NAV_ITEMS,
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -44,6 +46,7 @@ export default function AppShell({
         <Sidebar
           activePage={activePage}
           onNavigate={onNavigate}
+          items={navigationItems}
           collapsed={sidebarCollapsed}
           onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         />
