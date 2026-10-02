@@ -255,7 +255,10 @@ export default function PromptLibraryV5({
     setRunRequest(request);
   };
 
-  const closeImmersiveRun = () => {
+  const closeImmersiveRun = (state) => {
+    if (state?.values && runRequest) {
+      setRunRequest((current) => current ? { ...current, initialValues: { ...state.values }, initialRenderedPrompt: String(state.renderedPrompt || current.initialRenderedPrompt || '') } : current);
+    }
     setRunRequest(null);
     requestAnimationFrame(() => {
       if (runOriginRef.current?.isConnected && typeof runOriginRef.current.focus === 'function') {
@@ -344,6 +347,7 @@ export default function PromptLibraryV5({
               variablesEnabled={variablesEnabled}
               healthEnabled={healthEnabled}
               explainerEnabled={explainerEnabled}
+              exampleEnabled={dailyUseEnabled}
               transitionEnabled={sharedTransitionEnabled}
               sourceAvailable={sourceAvailable}
               onClose={closePrompt}
