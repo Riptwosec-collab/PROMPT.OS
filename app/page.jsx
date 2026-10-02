@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import LanguageRuntime from '../components/LanguageRuntime.jsx';
 import { V5FeatureFlagProvider } from '../components/V5FeatureFlagProvider.jsx';
@@ -10,7 +10,7 @@ import { loadPromptCatalogState } from '../lib/prompts/client-store.mjs';
 import { buildCommandItems } from '../lib/ui/command-items.mjs';
 import { shouldHandleShortcut } from '../lib/ui/command-palette.mjs';
 import { V5_FEATURE_FLAGS } from '../lib/ui/feature-flags.mjs';
-import { normalizeV5Page, V5_NAV_ITEMS } from '../lib/ui/v5-navigation.mjs';
+import { buildDailyUseNavItems, normalizeV5Page, V5_NAV_ITEMS } from '../lib/ui/v5-navigation.mjs';
 
 const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), {
   ssr: false,
@@ -26,8 +26,8 @@ const MissionControl = dynamic(() => import('../components/home/MissionControl.j
 });
 const CommandPaletteV5 = dynamic(() => import('../components/command/CommandPaletteV5.jsx'), { ssr: false });
 
-function PlaceholderPanel({ activePage }) {
-  const item = V5_NAV_ITEMS.find((entry) => entry.id === activePage);
+function PlaceholderPanel({ activePage, navigationItems = V5_NAV_ITEMS }) {
+  const item = navigationItems.find((entry) => entry.id === activePage);
   return (
     <section className="h-full overflow-auto p-4 md:p-8">
       <div className="v5-glass max-w-4xl mx-auto rounded-3xl p-6 md:p-10 shadow-[0_30px_100px_rgba(0,0,0,0.45)]">
@@ -46,18 +46,40 @@ export default function HomePage() {
   const [commandItems, setCommandItems] = useState([]);
 
   const v5CommandPaletteEnabled = Boolean(V5_FEATURE_FLAGS.V5_COMMAND_PALETTE);
+  const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
+  const v5PromptDetailEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_DETAIL);
+  const v5VariablesEnabled = Boolean(V5_FEATURE_FLAGS.V5_VARIABLES);
+  const v5PromptHealthEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_HEALTH);
+  const v5PromptExplainerEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_EXPLAINER);
+  const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
+  const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
+  const v5ExecutionEnabled = Boolean(V5_FEATURE_FLAGS.V5_EXECUTION_ENGINE);
+  const v5ImmersiveRunEnabled = Boolean(V5_FEATURE_FLAGS.V5_IMMERSIVE_RUN);
+  const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);
+  const v5MissionControlEnabled = Boolean(V5_FEATURE_FLAGS.V5_MISSION_CONTROL);
+  const v5UsageAnalyticsEnabled = Boolean(V5_FEATURE_FLAGS.V5_USAGE_ANALYTICS);
+  const v5PremiumCardsEnabled = Boolean(V5_FEATURE_FLAGS.V5_PREMIUM_CARDS);
+  const v5SharedPromptTransitionEnabled = Boolean(V5_FEATURE_FLAGS.V5_SHARED_PROMPT_TRANSITION);
+  const v5DailyUseEnabled = Boolean(V5_FEATURE_FLAGS.V5_DAILY_USE_COMPLETE);
+  const navigationItems = useMemo(() => buildDailyUseNavItems(v5DailyUseEnabled), [v5DailyUseEnabled]);
+
   const navigate = useCallback((page) => setActivePage(normalizeV5Page(page)), []);
   const clearLibraryRequest = useCallback(() => setLibraryRequest(null), []);
   const openLibraryPrompt = useCallback((id) => { setLibraryRequest({ type: 'prompt', id }); setActivePage('library'); }, []);
   const openLibraryView = useCallback((viewId) => { setLibraryRequest({ type: 'view', viewId }); setActivePage('library'); }, []);
+  const handleRuntimeOpenPrompt = useCallback((id) => {
+    if (activePage === 'library') return;
+    setLibraryRequest({ type: 'prompt', id });
+    setActivePage('library');
+  }, [activePage]);
 
   const openCommandPalette = useCallback(() => {
     if (!V5_FEATURE_FLAGS.V5_COMMAND_PALETTE) return;
     const storage = typeof window === 'undefined' ? null : window.localStorage;
     const { prompts } = loadPromptCatalogState(storage, AI_PROMPT_LIBRARY);
-    setCommandItems(buildCommandItems({ navItems: V5_NAV_ITEMS, prompts }));
+    setCommandItems(buildCommandItems({ navItems: navigationItems, prompts }));
     setCommandPaletteOpen(true);
-  }, []);
+  }, [navigationItems]);
 
   const executeCommandItem = useCallback((item) => {
     const action = item?.action;
@@ -82,31 +104,18 @@ export default function HomePage() {
 
   const status = null;
   const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
-  const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
-  const v5PromptDetailEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_DETAIL);
-  const v5VariablesEnabled = Boolean(V5_FEATURE_FLAGS.V5_VARIABLES);
-  const v5PromptHealthEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_HEALTH);
-  const v5PromptExplainerEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_EXPLAINER);
-  const v5WorkspaceEnabled = Boolean(V5_FEATURE_FLAGS.V5_WORKSPACE);
-  const v5SmartCollectionsEnabled = Boolean(V5_FEATURE_FLAGS.V5_SMART_COLLECTIONS);
-  const v5ExecutionEnabled = Boolean(V5_FEATURE_FLAGS.V5_EXECUTION_ENGINE);
-  const v5ImmersiveRunEnabled = Boolean(V5_FEATURE_FLAGS.V5_IMMERSIVE_RUN);
-  const v5VisualSystemEnabled = Boolean(V5_FEATURE_FLAGS.V5_VISUAL_SYSTEM);
-  const v5MissionControlEnabled = Boolean(V5_FEATURE_FLAGS.V5_MISSION_CONTROL);
-  const v5UsageAnalyticsEnabled = Boolean(V5_FEATURE_FLAGS.V5_USAGE_ANALYTICS);
-  const v5PremiumCardsEnabled = Boolean(V5_FEATURE_FLAGS.V5_PREMIUM_CARDS);
-  const v5SharedPromptTransitionEnabled = Boolean(V5_FEATURE_FLAGS.V5_SHARED_PROMPT_TRANSITION);
+  const runtimePage = activePage === 'library' || (v5DailyUseEnabled && (activePage === 'history' || activePage === 'results'));
 
   if (!v5ShellEnabled) return <LanguageRuntime><PromptOS /></LanguageRuntime>;
 
   return (
     <LanguageRuntime>
       <V5FeatureFlagProvider>
-        <AppShell activePage={activePage} onNavigate={navigate} onOpenCommand={v5CommandPaletteEnabled ? openCommandPalette : undefined} status={status} visualSystemEnabled={v5VisualSystemEnabled}>
+        <AppShell activePage={activePage} onNavigate={navigate} onOpenCommand={v5CommandPaletteEnabled ? openCommandPalette : undefined} status={status} visualSystemEnabled={v5VisualSystemEnabled} navigationItems={navigationItems}>
           {activePage === 'home' && v5MissionControlEnabled ? (
             <MissionControl onOpenCommand={openCommandPalette} onOpenPrompt={openLibraryPrompt} onOpenPack={openLibraryView} onOpenCollection={openLibraryView} onNavigate={navigate} cloudStatus={null} usageEnabled={v5UsageAnalyticsEnabled} healthEnabled={v5PromptHealthEnabled} smartCollectionsEnabled={v5SmartCollectionsEnabled} />
-          ) : activePage === 'library' ? (
-            v5SearchEnabled ? (
+          ) : runtimePage ? (
+            v5SearchEnabled || activePage !== 'library' ? (
               <PromptLibraryV5
                 detailEnabled={v5PromptDetailEnabled}
                 variablesEnabled={v5VariablesEnabled}
@@ -118,11 +127,14 @@ export default function HomePage() {
                 immersiveRunEnabled={v5ImmersiveRunEnabled}
                 premiumCardsEnabled={v5PremiumCardsEnabled}
                 sharedTransitionEnabled={v5PromptDetailEnabled && v5SharedPromptTransitionEnabled}
+                dailyUseEnabled={v5DailyUseEnabled}
+                dailyUseView={activePage}
                 externalRequest={libraryRequest}
                 onExternalRequestHandled={clearLibraryRequest}
+                onOpenPrompt={handleRuntimeOpenPrompt}
               />
             ) : <div className="v5-legacy-frame h-full"><PromptOS /></div>
-          ) : <PlaceholderPanel activePage={activePage} />}
+          ) : <PlaceholderPanel activePage={activePage} navigationItems={navigationItems} />}
         </AppShell>
         <CommandPaletteV5 open={v5CommandPaletteEnabled && commandPaletteOpen} items={commandItems} onClose={() => setCommandPaletteOpen(false)} onExecute={executeCommandItem} />
       </V5FeatureFlagProvider>
