@@ -34,26 +34,28 @@ function openLegacyV1() {
   });
 }
 
-test('runtime DB creates additive Daily Use indexes without changing store ownership', async () => {
+test('runtime DB creates additive Daily Use and Studio indexes without changing existing store ownership', async () => {
   await deleteDb().catch(() => {});
   let db;
   try {
     db = await openRuntimeDb();
-    assert.equal(RUNTIME_DB_VERSION, 2);
-    assert.deepEqual([...db.objectStoreNames], ['runs', 'runtimeMeta', 'savedResults', 'syncQueue']);
+    assert.equal(RUNTIME_DB_VERSION, 3);
+    assert.deepEqual([...db.objectStoreNames], ['promptDrafts', 'promptVersions', 'runs', 'runtimeMeta', 'savedResults', 'syncQueue']);
     const runs = db.transaction('runs', 'readonly').objectStore('runs');
     assert.deepEqual([...runs.indexNames], ['by-created-at', 'by-created-at-id', 'by-prompt-id', 'by-status']);
     const results = db.transaction('savedResults', 'readonly').objectStore('savedResults');
     assert.deepEqual([...results.indexNames], ['by-created-at', 'by-created-at-id', 'by-source-run-id']);
-    const queue = db.transaction('syncQueue', 'readonly').objectStore('syncQueue');
-    assert.deepEqual([...queue.indexNames], ['by-created-at', 'by-state']);
+    const drafts = db.transaction('promptDrafts', 'readonly').objectStore('promptDrafts');
+    assert.deepEqual([...drafts.indexNames], ['by-prompt-id', 'by-updated-at']);
+    const versions = db.transaction('promptVersions', 'readonly').objectStore('promptVersions');
+    assert.deepEqual([...versions.indexNames], ['by-created-at', 'by-prompt-id', 'by-prompt-version']);
   } finally {
     db?.close();
     await deleteDb().catch(() => {});
   }
 });
 
-test('opening legacy v1 upgrades in place and preserves existing run/result records', async () => {
+test('opening legacy v1 upgrades in place and preserves existing run/result records while adding Studio stores', async () => {
   await deleteDb().catch(() => {});
   let legacy;
   let upgraded;
@@ -70,13 +72,13 @@ test('opening legacy v1 upgrades in place and preserves existing run/result reco
     legacy = null;
 
     upgraded = await openRuntimeDb();
-    assert.equal(upgraded.version, 2);
+    assert.equal(upgraded.version, 3);
     const run = await withStore(upgraded, 'runs', 'readonly', (store) => store.get('legacy-run'));
     const result = await withStore(upgraded, 'savedResults', 'readonly', (store) => store.get('legacy-result'));
     assert.equal(run.output, 'legacy output');
     assert.equal(result.outputSnapshot, 'legacy output');
-    assert.ok(upgraded.transaction('runs', 'readonly').objectStore('runs').indexNames.contains('by-created-at-id'));
-    assert.ok(upgraded.transaction('savedResults', 'readonly').objectStore('savedResults').indexNames.contains('by-created-at-id'));
+    assert.ok(upgraded.objectStoreNames.contains('promptDrafts'));
+    assert.ok(upgraded.objectStoreNames.contains('promptVersions'));
   } finally {
     legacy?.close();
     upgraded?.close();
@@ -85,10 +87,7 @@ test('opening legacy v1 upgrades in place and preserves existing run/result reco
 });
 
 test('opening failure is surfaced and never replaced by a silent reset', async () => {
-  const indexedDBImpl = {
-    open() { throw new Error('IndexedDB unavailable'); },
-    deleteDatabase() { throw new Error('must not delete'); },
-  };
+  const indexedDBImpl = { open() { throw new Error('IndexedDB unavailable'); }, deleteDatabase() { throw new Error('must not delete'); } };
   await assert.rejects(() => openRuntimeDb({ indexedDBImpl }), /IndexedDB unavailable/);
 });
 
