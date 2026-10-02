@@ -11,7 +11,6 @@ import { openRuntimeDb, RUNTIME_DB_NAME } from '../lib/run/indexeddb.mjs';
 
 const studioSource = fs.readFileSync(new URL('../components/studio/PromptStudio.jsx', import.meta.url), 'utf8');
 const detailSource = fs.readFileSync(new URL('../components/prompt/PromptDetailV2.jsx', import.meta.url), 'utf8');
-const librarySource = fs.readFileSync(new URL('../components/prompt/PromptLibraryV5.jsx', import.meta.url), 'utf8');
 const pageSource = fs.readFileSync(new URL('../app/page.jsx', import.meta.url), 'utf8');
 
 function clone(value) { return JSON.parse(JSON.stringify(value)); }
@@ -54,14 +53,14 @@ test('explicit Save Version keeps snapshots immutable and restore only creates w
   } finally { db?.close(); await deleteDb().catch(() => {}); }
 });
 
-test('Customize routes built-in to Studio while version creation remains explicit', () => {
+test('Customize routes built-in to Studio under the Studio flag while version creation remains explicit', () => {
   assert.match(detailSource, /Customize/);
-  assert.match(detailSource, /onCustomize/);
-  assert.match(librarySource, /studioEnabled/);
-  assert.match(librarySource, /onCustomizePrompt/);
+  assert.match(detailSource, /V5_PROMPT_STUDIO/);
+  assert.match(detailSource, /prompt-os:customize/);
   assert.match(pageSource, /createDerivedDraft/);
+  assert.match(pageSource, /prompt-os:customize/);
   assert.match(pageSource, /setStudioInitialDraft/);
-  assert.match(pageSource, /activePage.*studio|setActivePage\('studio'\)/s);
+  assert.match(pageSource, /setActivePage\('studio'\)/);
   assert.match(studioSource, /Save Version/);
   assert.match(studioSource, /nextVersionNumber/);
   assert.match(studioSource, /createVersionSnapshot/);
