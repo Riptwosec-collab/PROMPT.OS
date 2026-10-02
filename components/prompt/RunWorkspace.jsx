@@ -110,7 +110,7 @@ export default function RunWorkspace({
     if (!session?.id || active || persistenceProblem) return false;
     try {
       await execution.saveResult({ name: `${titleFor(prompt)} result` });
-      setSaveState('Saved locally');
+      setSaveState('Result saved');
       return true;
     } catch {
       setSaveState('Retry Save');
