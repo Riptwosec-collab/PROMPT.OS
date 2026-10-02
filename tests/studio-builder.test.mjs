@@ -5,7 +5,7 @@ import { createDraft, updateDraftSection, updateDraftRaw } from '../lib/studio/d
 import { readFeatureFlags } from '../lib/ui/feature-flags.mjs';
 
 const studioSource = fs.readFileSync(new URL('../components/studio/PromptStudio.jsx', import.meta.url), 'utf8');
-const librarySource = fs.readFileSync(new URL('../components/prompt/PromptLibraryV5.jsx', import.meta.url), 'utf8');
+const runtimeSource = fs.readFileSync(new URL('../lib/studio/runtime.mjs', import.meta.url), 'utf8');
 const pageSource = fs.readFileSync(new URL('../app/page.jsx', import.meta.url), 'utf8');
 
 test('Prompt Studio flag is default-off and strict-true only', () => {
@@ -34,18 +34,19 @@ test('Prompt Studio uses one draft state for Structured Raw Preview and Versions
   assert.match(studioSource, /Raw/);
   assert.match(studioSource, /Preview/);
   assert.match(studioSource, /Versions/);
-  assert.match(studioSource, /draftRepository\.upsert/);
+  assert.match(studioSource, /activeDraftRepository\.upsert/);
   assert.match(studioSource, /setTimeout/);
   assert.match(studioSource, /Recovered Draft/);
-  assert.doesNotMatch(studioSource, /versionRepository\.create\([^)]*autosave/s);
+  assert.doesNotMatch(studioSource, /activeVersionRepository\.create\([^)]*autosave/s);
   assert.match(studioSource, /min-h-11/);
 });
 
-test('library remains the IndexedDB repository owner and supplies Prompt Studio repositories under the release flag', () => {
-  assert.match(librarySource, /createDraftRepository/);
-  assert.match(librarySource, /createVersionRepository/);
-  assert.match(librarySource, /studioEnabled/);
-  assert.match(librarySource, /<PromptStudio/);
+test('Prompt Studio opens repositories only through the non-React runtime facade', () => {
+  assert.match(studioSource, /openStudioRuntime/);
+  assert.doesNotMatch(studioSource, /openRuntimeDb|indexedDB/);
+  assert.match(runtimeSource, /openRuntimeDb/);
+  assert.match(runtimeSource, /createDraftRepository/);
+  assert.match(runtimeSource, /createVersionRepository/);
   assert.match(pageSource, /V5_PROMPT_STUDIO/);
-  assert.match(pageSource, /studioEnabled=/);
+  assert.match(pageSource, /activePage === 'studio'/);
 });
