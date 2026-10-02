@@ -16,6 +16,7 @@ import { buildReleaseNavItems, normalizeV5Page, V5_NAV_ITEMS } from '../lib/ui/v
 const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">BOOTING_PROMPT.OS...</main> });
 const PromptLibraryV5 = dynamic(() => import('../components/prompt/PromptLibraryV5.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">LOADING_LIBRARY_V5...</main> });
 const PromptStudio = dynamic(() => import('../components/studio/PromptStudio.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-violet-300 grid place-items-center font-mono">LOADING_PROMPT_STUDIO...</main> });
+const CompareWorkspace = dynamic(() => import('../components/studio/CompareWorkspace.jsx'), { ssr: false });
 const MissionControl = dynamic(() => import('../components/home/MissionControl.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">LOADING_MISSION_CONTROL...</main> });
 const CommandPaletteV5 = dynamic(() => import('../components/command/CommandPaletteV5.jsx'), { ssr: false });
 
@@ -30,6 +31,7 @@ export default function HomePage() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [commandItems, setCommandItems] = useState([]);
   const [studioInitialDraft, setStudioInitialDraft] = useState(null);
+  const [compareRequest, setCompareRequest] = useState(null);
 
   const v5CommandPaletteEnabled = Boolean(V5_FEATURE_FLAGS.V5_COMMAND_PALETTE);
   const v5SearchEnabled = Boolean(V5_FEATURE_FLAGS.V5_SEARCH);
@@ -90,8 +92,18 @@ export default function HomePage() {
         // Keep the source prompt untouched and remain on the current surface if draft creation fails.
       }
     };
+    const handleCompare = (event) => {
+      const left = event?.detail?.left;
+      const right = event?.detail?.right;
+      if (!left?.kind || !right?.kind) return;
+      setCompareRequest({ left, right });
+    };
     window.addEventListener('prompt-os:customize', handleCustomize);
-    return () => window.removeEventListener('prompt-os:customize', handleCustomize);
+    window.addEventListener('prompt-os:compare', handleCompare);
+    return () => {
+      window.removeEventListener('prompt-os:customize', handleCustomize);
+      window.removeEventListener('prompt-os:compare', handleCompare);
+    };
   }, [v5PromptStudioEnabled]);
 
   useEffect(() => {
@@ -128,6 +140,7 @@ export default function HomePage() {
           ) : <PlaceholderPanel activePage={activePage} navigationItems={navigationItems} />}
         </AppShell>
         <CommandPaletteV5 open={v5CommandPaletteEnabled && commandPaletteOpen} items={commandItems} onClose={() => setCommandPaletteOpen(false)} onExecute={executeCommandItem} />
+        {v5PromptStudioEnabled && compareRequest ? <CompareWorkspace left={compareRequest.left} right={compareRequest.right} onClose={() => setCompareRequest(null)} /> : null}
       </V5FeatureFlagProvider>
     </LanguageRuntime>
   );
