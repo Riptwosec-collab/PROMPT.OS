@@ -8,10 +8,12 @@ import {
   updateDraftRaw,
   updateDraftSection,
 } from '../../lib/studio/draft-model.mjs';
+import { runPromptTestSuite } from '../../lib/studio/test-lab.mjs';
 import { createVersionSnapshot, VERSION_STATUS } from '../../lib/studio/version-model.mjs';
 import { openStudioRuntime } from '../../lib/studio/runtime.mjs';
+import PromptQualityCenter from './PromptQualityCenter.jsx';
 
-const MODE_LABELS = ['Structured', 'Raw', 'Preview', 'Versions'];
+const MODE_LABELS = ['Structured', 'Raw', 'Preview', 'Versions', 'Test Lab'];
 const SECTION_LABELS = {
   role: 'Role', goal: 'Goal', context: 'Context', inputs: 'Inputs', constraints: 'Constraints',
   outputFormat: 'Output Format', examples: 'Examples', variables: 'Variables', notes: 'Notes',
@@ -95,6 +97,7 @@ export default function PromptStudio({
   }, [mode, activeVersionRepository, draft.promptId]);
 
   const preview = useMemo(() => draft.rawPrompt || '', [draft.rawPrompt]);
+  const testLab = useMemo(() => runPromptTestSuite({ draft }), [draft]);
   const changeSection = (key, value) => setDraft((current) => updateDraftSection(current, key, value));
   const changeRaw = (value) => setDraft((current) => updateDraftRaw(current, value));
 
@@ -173,6 +176,7 @@ export default function PromptStudio({
         {mode === 'Structured' ? <div className="grid gap-3 md:grid-cols-2">{DRAFT_SECTION_KEYS.map((key) => <label key={key} className="v5-glass rounded-2xl border border-white/10 p-3 text-xs text-slate-400"><span className="mb-2 block font-medium text-slate-200">{SECTION_LABELS[key]}</span><textarea value={String(draft.sections[key] ?? '')} onChange={(event) => changeSection(key, event.target.value)} rows={key === 'context' || key === 'examples' ? 6 : 4} className="w-full resize-y rounded-xl border border-white/10 bg-black/20 p-3 text-sm leading-6 text-slate-200 outline-none focus:border-violet-300/40" /></label>)}</div> : null}
         {mode === 'Raw' ? <textarea value={draft.rawPrompt} onChange={(event) => changeRaw(event.target.value)} rows={24} className="v5-glass min-h-[60vh] w-full resize-y rounded-2xl border border-white/10 bg-black/20 p-4 font-mono text-xs leading-6 text-slate-200 outline-none focus:border-violet-300/40" aria-label="Raw prompt" /> : null}
         {mode === 'Preview' ? <pre className="v5-glass min-h-[50vh] whitespace-pre-wrap rounded-2xl border border-white/10 p-5 text-sm leading-7 text-slate-300">{preview || 'Start writing your prompt.'}</pre> : null}
+        {mode === 'Test Lab' ? <PromptQualityCenter checks={testLab.checks} title="Prompt Test Lab & Quality Center" /> : null}
         {mode === 'Versions' ? (
           <section className="v5-glass rounded-2xl border border-white/10 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
