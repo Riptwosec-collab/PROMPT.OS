@@ -28,6 +28,7 @@ const valid = {
   inputGuideTh: { topic: 'กรอกหัวข้อที่ต้องการทดสอบ', language: 'เลือกภาษาผลลัพธ์' },
   expectedOutputTh: ['ผลลัพธ์ที่ตรวจสอบได้'],
   exampleInputTh: 'หัวข้อ: ตรวจ VLAN trunk',
+  exampleValues: { topic: 'ตรวจ VLAN trunk', language: 'Thai' },
   prompt: 'TASK\nAnalyze {{topic}}.\nRespond in {{language}}.',
   variableConfig: {
     topic: { type: 'text', required: true, defaultValue: '', labelTh: 'หัวข้อ', helpTh: 'กรอกหัวข้อที่ต้องการทดสอบ', placeholderTh: 'เช่น VLAN trunk' },
@@ -41,6 +42,16 @@ test('built-in validator accepts a complete Quality V2 prompt', async () => {
   const quality = await loadQuality();
   assert.ok(quality, 'Expected lib/prompts/quality-validator.mjs to exist');
   assert.deepEqual(quality.validateBuiltInPrompt(valid), { ok: true, errors: [], warnings: [] });
+});
+
+test('built-in validator rejects invalid structured example values', async () => {
+  const quality = await loadQuality();
+  assert.ok(quality);
+  const broken = structuredClone(valid);
+  broken.exampleValues.topic = '';
+  const result = quality.validateBuiltInPrompt(broken);
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((item) => item.code === 'invalid_example_values'));
 });
 
 test('built-in validator rejects missing Thai purpose metadata', async () => {
