@@ -29,7 +29,7 @@ test('Structured and Raw edits return one canonical detached Draft object', () =
 });
 
 test('Prompt Studio uses one draft state for Structured Raw Preview and Versions modes with debounced repository autosave', () => {
-  assert.match(studioSource, /useState\([^)]*createDraft/s);
+  assert.match(studioSource, /const \[draft, setDraft\] = useState\(\(\) => createDraft/);
   assert.match(studioSource, /Structured/);
   assert.match(studioSource, /Raw/);
   assert.match(studioSource, /Preview/);
