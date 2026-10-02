@@ -6,6 +6,10 @@ on:
     branches: [main, feat/prompt-os-single-release]
   workflow_dispatch:
 
+concurrency:
+  group: prompt-os-check-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
