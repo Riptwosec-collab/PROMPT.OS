@@ -12,7 +12,9 @@ test('Prompt Detail supports example fill and clear from structured exampleValue
   assert.match(source, /exampleValues/);
   assert.match(source, /Try Example/);
   assert.match(source, /Clear Example/);
-  assert.doesNotMatch(source, /exampleInputTh.*setValues|setValues.*exampleInputTh/s);
+  const fillBlock = source.match(/const fillExample = \(\) => \{([\s\S]*?)\n  \};/)?.[1] || '';
+  assert.match(fillBlock, /prompt\.exampleValues/);
+  assert.doesNotMatch(fillBlock, /exampleInputTh/);
 });
 
 test('Run Workspace owns follow-output, save shortcut, safe escape and export recovery actions', () => {
