@@ -15,6 +15,7 @@ function MetricCard({ label, value, hint }) {
 
 export default function ControlCenter({
   metrics = null,
+  analytics = null,
   activity = [],
   failures = { runs: [], sync: [], storage: [] },
   onNavigate,
@@ -23,6 +24,7 @@ export default function ControlCenter({
   const syncFailures = failures?.sync || [];
   const storageFailures = failures?.storage || [];
   const totalFailures = runFailures.length + syncFailures.length + storageFailures.length;
+  const statuses = analytics?.statusBreakdown || {};
 
   return (
     <main className="h-full overflow-auto px-3 pb-24 pt-4 md:px-6 md:pb-8 md:pt-6" data-control-center>
@@ -42,11 +44,27 @@ export default function ControlCenter({
             <MetricCard label="Saved Results" value={metrics?.savedResults} />
             <MetricCard label="Pending Sync" value={metrics?.pendingSync} />
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <MetricCard label="Custom Prompts" value={metrics?.customPrompts} />
+            <MetricCard label="Drafts" value={metrics?.drafts} />
+            <MetricCard label="Versions" value={metrics?.versions} />
+            <MetricCard label="Sync Errors" value={metrics?.syncErrors} />
+            <MetricCard label="Conflicts" value={metrics?.conflicts} />
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <MetricCard label="Average latency" value={metrics?.averageLatencyMs == null ? null : `${Math.round(metrics.averageLatencyMs)} ms`} hint="Only Runs with real latency metadata" />
             <MetricCard label="Input tokens" value={metrics?.inputTokens} hint="Only provider-returned metadata" />
             <MetricCard label="Output tokens" value={metrics?.outputTokens} hint="Only provider-returned metadata" />
-            <MetricCard label="Conflicts" value={metrics?.conflicts} />
+          </div>
+        </section>
+
+        <section className="v5-glass rounded-2xl border border-white/10 p-4" aria-labelledby="status-breakdown-title">
+          <div className="flex items-center justify-between gap-3"><h2 id="status-breakdown-title" className="text-sm font-semibold text-white">Status Breakdown</h2><span className="text-[10px] text-slate-600">real Run records</span></div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard label="Success" value={statuses.success ?? 0} />
+            <MetricCard label="Failed" value={statuses.failed ?? 0} />
+            <MetricCard label="Stopped" value={statuses.stopped ?? 0} />
+            <MetricCard label="Interrupted" value={statuses.interrupted ?? 0} />
           </div>
         </section>
 
