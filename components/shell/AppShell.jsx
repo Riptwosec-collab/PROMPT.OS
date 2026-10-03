@@ -15,6 +15,7 @@ export default function AppShell({
   onNavigate,
   status,
   children,
+  navItems,
   onOpenCommand,
   onNewPrompt,
   onNewWorkflow,
@@ -27,54 +28,21 @@ export default function AppShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
   const commandEnabled = Boolean(onOpenCommand);
-
-  const openMore = () => {
-    if (onOpenMore) onOpenMore();
-    else onNavigate?.('settings');
-  };
+  const openMore = () => { if (onOpenMore) onOpenMore(); else onNavigate?.('settings'); };
 
   return (
     <div className={`v5-shell min-h-screen bg-[var(--v5-bg)] text-slate-200 overflow-hidden relative ${visualSystemEnabled ? 'v5-visual-enabled' : ''}`}>
-      {visualSystemEnabled ? (
-        <AuroraBackground />
-      ) : (
-        <div className="v5-ambient pointer-events-none fixed inset-0" aria-hidden="true" />
-      )}
+      {visualSystemEnabled ? <AuroraBackground /> : <div className="v5-ambient pointer-events-none fixed inset-0" aria-hidden="true" />}
       <div className="relative z-10 h-screen flex">
-        <Sidebar
-          activePage={activePage}
-          onNavigate={onNavigate}
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
-        />
+        <Sidebar activePage={activePage} onNavigate={onNavigate} navItems={navItems} collapsed={sidebarCollapsed} onToggleCollapsed={() => setSidebarCollapsed((value) => !value)} />
         <div className="min-w-0 flex-1 flex flex-col h-screen">
-          <TopBar
-            activePage={activePage}
-            onOpenCommand={onOpenCommand}
-            commandEnabled={commandEnabled}
-            status={status}
-          />
-          <main className="min-h-0 flex-1 overflow-hidden pb-24 md:pb-0">
-            <PageTransition activeKey={activePage}>
-              {children}
-            </PageTransition>
-          </main>
+          <TopBar activePage={activePage} onOpenCommand={onOpenCommand} commandEnabled={commandEnabled} status={status} />
+          <main className="min-h-0 flex-1 overflow-hidden pb-24 md:pb-0"><PageTransition activeKey={activePage}>{children}</PageTransition></main>
           {status ? <StatusHud status={status} /> : null}
         </div>
       </div>
-      <MobileDock
-        activePage={activePage}
-        onNavigate={onNavigate}
-        onNewPrompt={() => setCreateSheetOpen(true)}
-        onOpenMore={openMore}
-      />
-      <CreateActionSheet
-        open={createSheetOpen}
-        onClose={() => setCreateSheetOpen(false)}
-        onNewPrompt={onNewPrompt}
-        onNewWorkflow={onNewWorkflow}
-        onImportPrompt={onImportPrompt}
-      />
+      <MobileDock activePage={activePage} onNavigate={onNavigate} navItems={navItems} onNewPrompt={() => setCreateSheetOpen(true)} onOpenMore={openMore} />
+      <CreateActionSheet open={createSheetOpen} onClose={() => setCreateSheetOpen(false)} onNewPrompt={onNewPrompt} onNewWorkflow={onNewWorkflow} onImportPrompt={onImportPrompt} />
       <ToastViewport toasts={toasts} onDismiss={onDismissToast} />
     </div>
   );

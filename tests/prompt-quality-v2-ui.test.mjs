@@ -40,5 +40,5 @@ test('V5_PROMPT_EXPLAINER flows page to library to detail and stays default-off'
   assert.match(detail, /explainerEnabled = false/);
   assert.doesNotMatch(detail, /V5_FEATURE_FLAGS/);
   assert.match(env, /NEXT_PUBLIC_V5_PROMPT_EXPLAINER=false/);
-  assert.match(detail, /explainerEnabled \? \(/);
+  assert.match(detail, /explainerEnabled \? (?:\(|<)/);
 });
