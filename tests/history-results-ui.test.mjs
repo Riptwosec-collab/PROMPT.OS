@@ -35,7 +35,7 @@ test('Saved Results workspace exposes immutable artifacts, complete metadata act
   const source = read('components/results/SavedResults.jsx');
   for (const token of ['Saved Results', 'Search results', 'Rename', 'Pin', 'Tags', 'Notes', 'Open source Run', 'Open source Prompt', 'Duplicate', 'Export', 'Delete']) assert.ok(source.includes(token), `missing ${token}`);
   assert.match(source, /resultRepository\.listPage/);
-  assert.match(source, /runRepository\.get/);
+  assert.match(source, /resultRepository\.getSourceRun/);
   assert.match(source, /updateMetadata/);
   assert.match(source, /duplicate/);
   assert.match(source, /V5_PROMPT_STUDIO/);
