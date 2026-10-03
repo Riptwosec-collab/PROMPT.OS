@@ -14,7 +14,7 @@ function downloadText(filename, text, type = 'text/plain;charset=utf-8') {
   URL.revokeObjectURL(url);
 }
 
-export default function SavedResults({ resultRepository, onOpenPrompt }) {
+export default function SavedResults({ resultRepository, runRepository, onOpenPrompt }) {
   const flags = useV5FeatureFlags();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState([]);
@@ -22,6 +22,7 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
   const [selected, setSelected] = useState(() => new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sourceRun, setSourceRun] = useState(null);
   const query = useMemo(() => ({ search, limit: 25 }), [search]);
 
   const load = async ({ append = false, cursor = null } = {}) => {
@@ -59,6 +60,23 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
   const duplicate = async (resultId) => {
     await resultRepository.duplicate(resultId, { name: 'Copy' });
     await load();
+  };
+
+  const openSourceRun = async (item) => {
+    if (!item?.sourceRunId || !runRepository?.get) {
+      setError('Source Run is unavailable. The immutable Saved Result remains intact.');
+      return;
+    }
+    try {
+      const run = await runRepository.get(item.sourceRunId);
+      if (!run) {
+        setError('Source Run was deleted or is unavailable. The immutable Saved Result remains intact.');
+        return;
+      }
+      setSourceRun(run);
+    } catch (openError) {
+      setError(openError?.message || 'Unable to open source Run.');
+    }
   };
 
   const exportOne = (item, format = 'markdown') => {
@@ -110,6 +128,7 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
         </div>
 
         {error ? <div role="alert" className="rounded-xl border border-rose-300/20 bg-rose-300/5 p-3 text-xs text-rose-100">{error}</div> : null}
+        {sourceRun ? <aside className="v5-glass rounded-2xl border border-cyan-300/20 p-4" aria-label="Source Run"><div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-mono uppercase tracking-[0.16em] text-cyan-300/60">SOURCE RUN</p><p className="mt-1 text-sm font-medium text-white">{sourceRun.promptTitle || sourceRun.promptId || sourceRun.id}</p></div><button type="button" onClick={() => setSourceRun(null)} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-300">Close</button></div><p className="mt-3 whitespace-pre-wrap text-xs leading-5 text-slate-400">{sourceRun.output || sourceRun.renderedPrompt || 'No output checkpointed.'}</p></aside> : null}
 
         <div className="space-y-3">
           {items.map((item) => (
@@ -117,10 +136,10 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
               <div className="flex gap-3">
                 <input type="checkbox" checked={selected.has(item.resultId)} onChange={() => toggleSelected(item.resultId)} aria-label={`Select ${item.resultId}`} className="mt-1 h-4 w-4" />
                 <div className="min-w-0 flex-1 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <h2 className="truncate text-sm font-medium text-white">{item.name || 'Saved Result'}</h2>
-                      <button type="button" onClick={() => item.metadataSnapshot?.promptId && onOpenPrompt?.(item.metadataSnapshot.promptId)} className="mt-1 text-[10px] text-cyan-300/70 hover:text-cyan-200">Open source Prompt</button>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <label className="block text-[10px] text-slate-500">Rename<input key={`${item.resultId}:${item.updatedAt}`} defaultValue={item.name || 'Saved Result'} onBlur={(event) => event.target.value.trim() !== (item.name || 'Saved Result') && update(item.resultId, { name: event.target.value })} className="mt-1 min-h-11 w-full max-w-md rounded-xl border border-white/10 bg-black/20 px-3 text-sm font-medium text-white" /></label>
+                      <div className="mt-2 flex flex-wrap gap-3"><button type="button" onClick={() => openSourceRun(item)} className="text-[10px] text-violet-300/80 hover:text-violet-200">Open source Run</button><button type="button" onClick={() => item.metadataSnapshot?.promptId && onOpenPrompt?.(item.metadataSnapshot.promptId)} className="text-[10px] text-cyan-300/70 hover:text-cyan-200">Open source Prompt</button></div>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => update(item.resultId, { pinned: !item.pinned })} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200">{item.pinned ? 'Unpin' : 'Pin'}</button>
@@ -133,12 +152,8 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
                   <p className="line-clamp-3 whitespace-pre-wrap text-xs leading-5 text-slate-400">{item.outputSnapshot || 'No output snapshot.'}</p>
 
                   <div className="grid gap-2 md:grid-cols-2">
-                    <label className="text-[10px] text-slate-500">Tags
-                      <input defaultValue={(item.tags || []).join(', ')} onBlur={(event) => update(item.resultId, { tags: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-slate-200" placeholder="Tags" />
-                    </label>
-                    <label className="text-[10px] text-slate-500">Notes
-                      <input defaultValue={item.notes || ''} onBlur={(event) => update(item.resultId, { notes: event.target.value })} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-slate-200" placeholder="Notes" />
-                    </label>
+                    <label className="text-[10px] text-slate-500">Tags<input defaultValue={(item.tags || []).join(', ')} onBlur={(event) => update(item.resultId, { tags: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-slate-200" placeholder="Tags" /></label>
+                    <label className="text-[10px] text-slate-500">Notes<input defaultValue={item.notes || ''} onBlur={(event) => update(item.resultId, { notes: event.target.value })} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-slate-200" placeholder="Notes" /></label>
                   </div>
                 </div>
               </div>
@@ -147,9 +162,7 @@ export default function SavedResults({ resultRepository, onOpenPrompt }) {
           {!loading && items.length === 0 ? <div className="rounded-2xl border border-white/10 p-8 text-center text-sm text-slate-500">No Saved Results match this search.</div> : null}
         </div>
 
-        <div className="flex justify-center pb-8">
-          {nextCursor ? <button type="button" disabled={loading} onClick={() => load({ append: true, cursor: nextCursor })} className="min-h-11 rounded-xl border border-violet-300/20 px-4 text-xs text-violet-100 disabled:opacity-40">Load more</button> : null}
-        </div>
+        <div className="flex justify-center pb-8">{nextCursor ? <button type="button" disabled={loading} onClick={() => load({ append: true, cursor: nextCursor })} className="min-h-11 rounded-xl border border-violet-300/20 px-4 text-xs text-violet-100 disabled:opacity-40">Load more</button> : null}</div>
       </div>
     </section>
   );
