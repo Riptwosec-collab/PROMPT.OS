@@ -21,7 +21,7 @@ test('control runtime gathers real persisted repositories without React owning I
   const versionRepository = createVersionRepository({ db, idFactory: () => 'version-1', now: () => 400 });
   const syncRepository = createSyncRepository({ db });
 
-  await runRepository.create({ id: 'run-1', promptId: 'p1', status: 'success', output: 'ok', createdAt: 1000, completedAt: 1100, latencyMs: 120, inputTokens: 5, outputTokens: 8 });
+  await runRepository.create({ id: 'run-1', promptId: 'p1', status: 'success', output: 'ok', createdAt: Date.parse('2026-10-03T00:00:00Z'), completedAt: Date.parse('2026-10-03T00:00:01Z'), latencyMs: 120, inputTokens: 5, outputTokens: 8 });
   await resultRepository.saveFromRun(await runRepository.get('run-1'), { name: 'Saved' });
   const draft = await draftRepository.upsert({ draftId: 'draft-1', promptId: 'user-1', title: 'User Prompt', rawPrompt: 'Hello' });
   await versionRepository.create({ draft, versionNumber: 1, label: 'v1' });
@@ -34,12 +34,21 @@ test('control runtime gathers real persisted repositories without React owning I
   assert.equal(snapshot.versions.length, 1);
   assert.equal(snapshot.syncItems.length, 1);
 
-  const model = buildControlModel(snapshot, { now: new Date('2026-10-03T00:00:00Z') });
+  const model = buildControlModel({ ...snapshot, customPrompts: [{ id: 'user-1' }] }, { now: new Date('2026-10-03T00:00:00Z') });
+  assert.equal(model.metrics.runsToday, 1);
   assert.equal(model.metrics.savedResults, 1);
+  assert.equal(model.metrics.customPrompts, 1);
+  assert.equal(model.metrics.drafts, 1);
+  assert.equal(model.metrics.versions, 1);
   assert.equal(model.metrics.pendingSync, 1);
+  assert.equal(model.metrics.syncErrors, 0);
   assert.equal(model.metrics.averageLatencyMs, 120);
   assert.equal(model.metrics.inputTokens, 5);
   assert.equal(model.metrics.outputTokens, 8);
+  assert.deepEqual(model.analytics.statusBreakdown, { success: 1 });
+  assert.deepEqual(model.analytics.mostUsedPrompts, [{ promptId: 'p1', count: 1 }]);
+  assert.equal(model.analytics.savedResultRate.savedRuns, 1);
+  assert.equal(model.analytics.failureBreakdown.failed, 0);
   assert.ok(Array.isArray(model.activity));
   db.close();
 });
@@ -63,6 +72,8 @@ test('top-level page delegates Control Center persistence and backup ownership t
   assert.match(runtime, /createBackup/);
   assert.match(runtime, /validateBackup/);
   assert.match(runtime, /planRestore/);
+  assert.match(runtime, /readPromptBackupData/);
+  assert.match(runtime, /applyBackupRestore/);
   assert.doesNotMatch(page, /openRuntimeDb|indexedDB/);
   assert.doesNotMatch(runtime, /indexedDB\.open/);
 });
