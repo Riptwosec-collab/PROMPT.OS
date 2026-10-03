@@ -18,17 +18,45 @@ function statusLabel(status) {
   return String(status || 'unknown').toUpperCase();
 }
 
+function dayStart(value) {
+  if (!value) return null;
+  const time = Date.parse(`${value}T00:00:00`);
+  return Number.isFinite(time) ? time : null;
+}
+
+function dayEnd(value) {
+  if (!value) return null;
+  const time = Date.parse(`${value}T23:59:59.999`);
+  return Number.isFinite(time) ? time : null;
+}
+
 export default function RunHistory({ runRepository, onOpenPrompt }) {
   const flags = useV5FeatureFlags();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [promptId, setPromptId] = useState('');
+  const [provider, setProvider] = useState('');
+  const [model, setModel] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [savedState, setSavedState] = useState('all');
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const query = useMemo(() => ({ search, statuses: status ? [status] : [], limit: 25 }), [search, status]);
+  const query = useMemo(() => ({
+    search,
+    statuses: status ? [status] : [],
+    promptId: promptId.trim() || null,
+    provider: provider.trim() || null,
+    model: model.trim() || null,
+    from: dayStart(fromDate),
+    to: dayEnd(toDate),
+    saved: savedState === 'saved' ? true : savedState === 'unsaved' ? false : null,
+    limit: 25,
+  }), [search, status, promptId, provider, model, fromDate, toDate, savedState]);
 
   const load = async ({ append = false, cursor = null } = {}) => {
     if (!runRepository?.listPage) return;
@@ -96,14 +124,20 @@ export default function RunHistory({ runRepository, onOpenPrompt }) {
           <p className="mt-1 text-xs text-slate-500">Every durably created Run stays discoverable here.</p>
         </header>
 
-        <div className="v5-glass grid gap-3 rounded-2xl p-3 md:grid-cols-[1fr_180px_auto]">
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search history" aria-label="Search history" className="min-h-11 rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus:border-cyan-300/40" />
-          <label className="text-[10px] text-slate-400">Status
-            <select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-[#09101d] px-3 text-xs text-slate-200">
-              <option value="">All</option><option value="success">Success</option><option value="failed">Failed</option><option value="stopped">Stopped</option><option value="interrupted">Interrupted</option>
-            </select>
-          </label>
-          <div className="flex flex-wrap items-end gap-2">
+        <div className="v5-glass space-y-3 rounded-2xl p-3">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <label className="text-[10px] text-slate-400">Search history<input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Prompt, output, result name" className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus:border-cyan-300/40" /></label>
+            <label className="text-[10px] text-slate-400">Status<select value={status} onChange={(event) => setStatus(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-[#09101d] px-3 text-xs text-slate-200"><option value="">All</option><option value="success">Success</option><option value="failed">Failed</option><option value="stopped">Stopped</option><option value="interrupted">Interrupted</option></select></label>
+            <label className="text-[10px] text-slate-400">Prompt ID<input value={promptId} onChange={(event) => setPromptId(event.target.value)} placeholder="Exact prompt ID" className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-slate-200" /></label>
+            <label className="text-[10px] text-slate-400">Saved state<select value={savedState} onChange={(event) => setSavedState(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-[#09101d] px-3 text-xs text-slate-200"><option value="all">All</option><option value="saved">Saved</option><option value="unsaved">Unsaved</option></select></label>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <label className="text-[10px] text-slate-400">Provider<input value={provider} onChange={(event) => setProvider(event.target.value)} placeholder="openai" className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-slate-200" /></label>
+            <label className="text-[10px] text-slate-400">Model<input value={model} onChange={(event) => setModel(event.target.value)} placeholder="Model" className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-slate-200" /></label>
+            <label className="text-[10px] text-slate-400">From date<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-[#09101d] px-3 text-xs text-slate-200" /></label>
+            <label className="text-[10px] text-slate-400">To date<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-white/10 bg-[#09101d] px-3 text-xs text-slate-200" /></label>
+          </div>
+          <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => exportSelected('json')} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200">Export</button>
             {flags.V5_PROMPT_STUDIO ? <button type="button" onClick={compareSelected} disabled={selectedItems.length !== 2} className="min-h-11 rounded-xl border border-violet-300/20 px-3 text-xs text-violet-100 disabled:opacity-40">Compare selected</button> : null}
             <button type="button" onClick={deleteSelected} disabled={!selectedItems.length} className="min-h-11 rounded-xl border border-rose-300/20 px-3 text-xs text-rose-100 disabled:opacity-40">Delete selected</button>
@@ -123,9 +157,7 @@ export default function RunHistory({ runRepository, onOpenPrompt }) {
                     <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-mono text-slate-400">{statusLabel(run.status)}</span>
                   </div>
                   <p className="mt-2 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-slate-400">{run.output || run.renderedPrompt || 'No output checkpointed.'}</p>
-                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-slate-600">
-                    <span>{run.model || run.provider || 'provider unavailable'}</span><span>•</span><span>{run.createdAt ? new Date(run.createdAt).toLocaleString() : 'time unavailable'}</span>
-                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[10px] text-slate-600"><span>{run.model || run.provider || 'provider unavailable'}</span><span>•</span><span>{run.createdAt ? new Date(run.createdAt).toLocaleString() : 'time unavailable'}</span></div>
                 </div>
               </div>
             </article>
@@ -133,9 +165,7 @@ export default function RunHistory({ runRepository, onOpenPrompt }) {
           {!loading && items.length === 0 ? <div className="rounded-2xl border border-white/10 p-8 text-center text-sm text-slate-500">No Run History matches these filters.</div> : null}
         </div>
 
-        <div className="flex justify-center pb-8">
-          {nextCursor ? <button type="button" disabled={loading} onClick={() => load({ append: true, cursor: nextCursor })} className="min-h-11 rounded-xl border border-cyan-300/20 px-4 text-xs text-cyan-100 disabled:opacity-40">Load more</button> : null}
-        </div>
+        <div className="flex justify-center pb-8">{nextCursor ? <button type="button" disabled={loading} onClick={() => load({ append: true, cursor: nextCursor })} className="min-h-11 rounded-xl border border-cyan-300/20 px-4 text-xs text-cyan-100 disabled:opacity-40">Load more</button> : null}</div>
       </div>
     </section>
   );
