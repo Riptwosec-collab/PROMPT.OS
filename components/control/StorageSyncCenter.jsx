@@ -9,6 +9,7 @@ function Stat({ label, value }) {
 
 export default function StorageSyncCenter({
   storage = { available: false, usage: null, quota: null },
+  counts = { runs: 0, results: 0, drafts: 0, versions: 0 },
   syncSummary = { local: 0, pending: 0, syncing: 0, synced: 0, conflict: 0, sync_error: 0, total: 0 },
   cloudAdapter = null,
   onSyncNow,
@@ -38,7 +39,8 @@ export default function StorageSyncCenter({
         </header>
 
         <section className="v5-glass rounded-2xl border border-white/10 p-4" aria-labelledby="storage-health-title">
-          <div className="flex items-center justify-between gap-3"><h2 id="storage-health-title" className="text-sm font-semibold text-white">Storage Health</h2><span className="text-[10px] text-slate-600">browser estimate</span></div>
+          <div className="flex items-center justify-between gap-3"><h2 id="storage-health-title" className="text-sm font-semibold text-white">Storage Health</h2><span className="text-[10px] text-slate-600">persisted records</span></div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Stat label="Runs" value={counts.runs ?? 0} /><Stat label="Saved Results" value={counts.results ?? 0} /><Stat label="Drafts" value={counts.drafts ?? 0} /><Stat label="Versions" value={counts.versions ?? 0} /></div>
           {storage.available ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><Stat label="Used" value={formatBytes(storage.usage)} /><Stat label="Quota" value={formatBytes(storage.quota)} /></div> : <p className="mt-3 rounded-xl border border-white/10 p-4 text-sm text-slate-500">Unavailable</p>}
         </section>
 
