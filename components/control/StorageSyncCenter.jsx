@@ -21,10 +21,11 @@ export default function StorageSyncCenter({
   onRestoreBackup,
 }) {
   const confirmCleanup = async (kind) => {
+    const handler = kind === 'runs' ? onDeleteRuns : onDeleteResults;
+    if (!handler) return;
     const label = kind === 'runs' ? 'selected Runs' : 'selected Saved Results';
     if (!window.confirm(`Delete ${label}? This cleanup is explicit and cannot be undone.`)) return;
-    if (kind === 'runs') await onDeleteRuns?.();
-    else await onDeleteResults?.();
+    await handler();
   };
 
   return (
@@ -52,11 +53,12 @@ export default function StorageSyncCenter({
 
         <section className="v5-glass rounded-2xl border border-white/10 p-4" aria-labelledby="cleanup-title">
           <h2 id="cleanup-title" className="text-sm font-semibold text-white">Explicit Cleanup</h2><p className="mt-1 text-xs text-slate-500">Nothing is automatically pruned. Select what to remove from its source workspace first.</p>
-          <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => confirmCleanup('runs')} className="min-h-11 rounded-xl border border-rose-300/20 px-3 text-xs text-rose-100">Delete selected Runs</button><button type="button" onClick={() => confirmCleanup('results')} className="min-h-11 rounded-xl border border-rose-300/20 px-3 text-xs text-rose-100">Delete selected Saved Results</button></div>
+          <div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={!onDeleteRuns} onClick={() => confirmCleanup('runs')} className="min-h-11 rounded-xl border border-rose-300/20 px-3 text-xs text-rose-100 disabled:cursor-not-allowed disabled:opacity-35">Delete selected Runs</button><button type="button" disabled={!onDeleteResults} onClick={() => confirmCleanup('results')} className="min-h-11 rounded-xl border border-rose-300/20 px-3 text-xs text-rose-100 disabled:cursor-not-allowed disabled:opacity-35">Delete selected Saved Results</button></div>
+          {!onDeleteRuns && !onDeleteResults ? <p className="mt-2 text-[10px] text-slate-600">Choose records in Run History or Saved Results before cleanup becomes available.</p> : null}
         </section>
 
         <section className="v5-glass rounded-2xl border border-white/10 p-4" aria-labelledby="backup-title">
-          <h2 id="backup-title" className="text-sm font-semibold text-white">Backup / Restore</h2><p className="mt-1 text-xs text-slate-500">Export and validation actions become active only when the backup domain is available.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={onExportBackup} disabled={!onExportBackup} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200 disabled:opacity-35">Export Backup</button><button type="button" onClick={onRestoreBackup} disabled={!onRestoreBackup} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200 disabled:opacity-35">Restore Backup</button></div>
+          <h2 id="backup-title" className="text-sm font-semibold text-white">Backup / Restore</h2><p className="mt-1 text-xs text-slate-500">Backup is validated before any restore write. Built-in prompt definitions are never replaced.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={onExportBackup} disabled={!onExportBackup} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200 disabled:opacity-35">Export Backup</button><button type="button" onClick={onRestoreBackup} disabled={!onRestoreBackup} className="min-h-11 rounded-xl border border-white/10 px-3 text-xs text-slate-200 disabled:opacity-35">Restore Backup</button></div>
         </section>
       </div>
     </main>
