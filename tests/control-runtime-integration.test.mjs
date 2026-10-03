@@ -53,13 +53,13 @@ test('control navigation exposes Control Center and Storage & Sync only under re
   assert.equal(on.some((item) => item.id === 'storage'), true);
 });
 
-test('top-level page wires real Control Center runtime without directly opening IndexedDB', () => {
+test('top-level page delegates Control Center persistence and backup ownership to runtime component', () => {
   const page = read('app/page.jsx');
   const runtime = read('components/control/ControlCenterRuntime.jsx');
   assert.match(page, /V5_CONTROL_CENTER_V2/);
   assert.match(page, /ControlCenterRuntime/);
-  assert.match(page, /StorageSyncCenter/);
-  assert.match(runtime, /loadControlSnapshot/);
+  assert.match(runtime, /StorageSyncCenter/);
+  assert.match(runtime, /openControlRuntime/);
   assert.match(runtime, /createBackup/);
   assert.match(runtime, /validateBackup/);
   assert.match(runtime, /planRestore/);
