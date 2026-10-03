@@ -108,7 +108,7 @@ test('restore applies validated data, preserves local collisions, and never over
   const draftRepository = createDraftRepository({ db, now: () => 10 });
   const versionRepository = createVersionRepository({ db, idFactory: () => 'existing-version', now: () => 20 });
   const builtIn = AI_PROMPT_LIBRARY[0];
-  const storage = memoryStorage({ promptVaultData: JSON.stringify({ prompts: [builtIn], promptPacks: [], settings: { language: 'en' } }) });
+  const storage = memoryStorage({ promptVaultData: JSON.stringify({ prompts: [builtIn], promptPacks: [], settings: {} }) });
 
   await runRepository.create({ id: 'local-run', promptId: builtIn.id, status: 'success', output: 'local', createdAt: 1 });
   await draftRepository.upsert({ draftId: 'local-draft', promptId: 'user:local', title: 'Local draft', rawPrompt: 'local' });
