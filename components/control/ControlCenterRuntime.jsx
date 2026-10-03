@@ -1,9 +1,15 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ControlCenter from './ControlCenter.jsx';
 import StorageSyncCenter from './StorageSyncCenter.jsx';
-import { createBackup, planRestore, validateBackup } from '../../lib/control/backup.mjs';
+import {
+  applyBackupRestore,
+  createBackup,
+  planRestore,
+  readPromptBackupData,
+  validateBackup,
+} from '../../lib/control/backup.mjs';
 import { openControlRuntime } from '../../lib/control/runtime.mjs';
 
 function downloadJson(filename, value) {
@@ -16,6 +22,10 @@ function downloadJson(filename, value) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+function browserStorage() {
+  return typeof window === 'undefined' ? null : window.localStorage;
 }
 
 export default function ControlCenterRuntime({ activePage = 'control', onNavigate, cloudAdapter = null }) {
@@ -59,30 +69,17 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
     };
   }, []);
 
-  const backupSnapshot = useMemo(() => ({
-    ...(state.snapshot || {}),
-    customPrompts: state.snapshot?.drafts?.map((draft) => ({
-      id: draft.promptId || draft.draftId,
-      owner: 'user',
-      title: draft.title,
-      prompt: draft.rawPrompt,
-      derivedFromPromptId: draft.derivedFromPromptId ?? null,
-    })) || [],
-    packs: [],
-    favorites: [],
-    settings: {},
-  }), [state.snapshot]);
-
   const handleExportBackup = useCallback(() => {
     if (!state.snapshot) return;
-    const backup = createBackup(backupSnapshot);
+    const promptData = readPromptBackupData(browserStorage());
+    const backup = createBackup({ ...state.snapshot, ...promptData });
     downloadJson('prompt-os-backup.json', backup);
-  }, [backupSnapshot, state.snapshot]);
+  }, [state.snapshot]);
 
   const handleRestoreFile = useCallback(async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
-    if (!file) return;
+    if (!file || !runtimeRef.current?.db) return;
     try {
       const text = await file.text();
       const validation = validateBackup(text);
@@ -90,16 +87,32 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
         setRestoreStatus(`Backup rejected: ${validation.errors.join('; ')}`);
         return;
       }
-      const plan = planRestore(text, backupSnapshot);
+      const promptData = readPromptBackupData(browserStorage());
+      const localState = { ...(state.snapshot || {}), ...promptData };
+      const plan = planRestore(text, localState);
       if (!plan.ok) {
         setRestoreStatus(`Restore plan failed: ${plan.errors.join('; ')}`);
         return;
       }
-      setRestoreStatus(`Validated backup: ${plan.creates.length} creates, ${plan.conflicts.length} conflicts. No data was changed.`);
+      const confirmed = window.confirm(`Restore this validated backup? ${plan.creates.length} new items will be added and ${plan.conflicts.length} conflicts will preserve both copies. Existing built-in prompts will not be replaced.`);
+      if (!confirmed) {
+        setRestoreStatus('Restore cancelled. No data was changed.');
+        return;
+      }
+      const result = await applyBackupRestore(text, {
+        db: runtimeRef.current.db,
+        storage: browserStorage(),
+      });
+      if (!result.ok) {
+        setRestoreStatus(`Restore failed: ${result.errors?.join('; ') || 'Unable to import backup'}`);
+        return;
+      }
+      await refresh();
+      setRestoreStatus(`Restore complete: ${result.applied} items applied; ${result.conflicts} conflicts preserved without overwriting built-ins.`);
     } catch (error) {
       setRestoreStatus(`Backup rejected: ${error instanceof Error ? error.message : String(error)}`);
     }
-  }, [backupSnapshot]);
+  }, [refresh, state.snapshot]);
 
   const handleRetryFailed = useCallback(async () => {
     const repository = runtimeRef.current?.repositories?.syncRepository;
