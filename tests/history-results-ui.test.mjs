@@ -17,9 +17,13 @@ test('daily navigation adds separate History and Saved Results destinations with
   assert.equal(normalizeV5Page('results'), 'results');
 });
 
-test('History workspace exposes search filters pagination selection export delete and Studio-gated Compare', () => {
+test('History workspace exposes all approved filters pagination selection export delete and Studio-gated Compare', () => {
   const source = read('components/history/RunHistory.jsx');
-  for (const token of ['Run History', 'Search history', 'Status', 'Load more', 'Export', 'Delete selected']) assert.ok(source.includes(token), `missing ${token}`);
+  for (const token of ['Run History', 'Search history', 'Status', 'Prompt ID', 'Provider', 'Model', 'From date', 'To date', 'Saved state', 'Load more', 'Export', 'Delete selected']) assert.ok(source.includes(token), `missing ${token}`);
+  assert.match(source, /promptId/);
+  assert.match(source, /provider/);
+  assert.match(source, /model/);
+  assert.match(source, /saved/);
   assert.match(source, /runRepository\.listPage/);
   assert.match(source, /window\.confirm/);
   assert.match(source, /V5_PROMPT_STUDIO/);
@@ -27,10 +31,11 @@ test('History workspace exposes search filters pagination selection export delet
   assert.doesNotMatch(source, /openRuntimeDb|indexedDB/);
 });
 
-test('Saved Results workspace exposes immutable artifacts, metadata actions and Studio-gated Compare', () => {
+test('Saved Results workspace exposes immutable artifacts, complete metadata actions and source Run access', () => {
   const source = read('components/results/SavedResults.jsx');
-  for (const token of ['Saved Results', 'Search results', 'Pin', 'Tags', 'Notes', 'Duplicate', 'Export', 'Delete']) assert.ok(source.includes(token), `missing ${token}`);
+  for (const token of ['Saved Results', 'Search results', 'Rename', 'Pin', 'Tags', 'Notes', 'Open source Run', 'Open source Prompt', 'Duplicate', 'Export', 'Delete']) assert.ok(source.includes(token), `missing ${token}`);
   assert.match(source, /resultRepository\.listPage/);
+  assert.match(source, /runRepository\.get/);
   assert.match(source, /updateMetadata/);
   assert.match(source, /duplicate/);
   assert.match(source, /V5_PROMPT_STUDIO/);
