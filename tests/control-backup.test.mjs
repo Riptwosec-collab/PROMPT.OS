@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBackup, planRestore, validateBackup } from '../lib/control/backup.mjs';
+import { IDBFactory } from 'fake-indexeddb';
+import { AI_PROMPT_LIBRARY } from '../lib/prompts/ai-prompt-library.mjs';
+import { openRuntimeDb } from '../lib/run/indexeddb.mjs';
+import { createRunRepository } from '../lib/run/run-repository.mjs';
+import { createResultRepository } from '../lib/run/result-repository.mjs';
+import { createDraftRepository } from '../lib/studio/draft-repository.mjs';
+import { createVersionRepository } from '../lib/studio/version-repository.mjs';
+import { applyBackupRestore, createBackup, readPromptBackupData, planRestore, validateBackup } from '../lib/control/backup.mjs';
 
 const snapshot = {
   prompts: [
@@ -15,6 +22,15 @@ const snapshot = {
   favorites: ['builtin:1', 'user:1'],
   settings: { language: 'th', theme: 'dark', apiKey: 'SECRET', token: 'SECRET' },
 };
+
+function memoryStorage(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  return {
+    getItem(key) { return values.has(key) ? values.get(key) : null; },
+    setItem(key, value) { values.set(key, String(value)); },
+    removeItem(key) { values.delete(key); },
+  };
+}
 
 test('backup round-trip contains supported user data with schema version and export-safe settings', () => {
   const backup = createBackup(snapshot, { now: () => 1234 });
@@ -65,4 +81,79 @@ test('restore plan preserves both for mutable collisions by default and requires
 
   const destructive = planRestore(backup, localState, { replaceMutable: true });
   assert.equal(destructive.requiresDestructiveConfirmation, true);
+});
+
+test('prompt backup source reads real custom prompts, packs, favorites and export-safe settings', () => {
+  const builtIn = AI_PROMPT_LIBRARY[0];
+  const storage = memoryStorage({
+    promptVaultData: JSON.stringify({
+      prompts: [builtIn, { id: 'user:backup', name: 'User backup', prompt: 'Hello', owner: 'user', favorite: true }],
+      promptPacks: [{ id: 'pack:user', name: 'User pack', promptIds: [String(builtIn.id), 'user:backup'] }],
+      settings: { language: 'th', theme: 'dark', apiKey: 'DO_NOT_EXPORT' },
+    }),
+  });
+  const data = readPromptBackupData(storage);
+  assert.deepEqual(data.customPrompts.map((item) => item.id), ['user:backup']);
+  assert.deepEqual(data.packs.map((item) => item.id), ['pack:user']);
+  assert.ok(data.favorites.includes('user:backup'));
+  assert.equal(data.settings.language, 'th');
+  assert.equal(JSON.stringify(data).includes('DO_NOT_EXPORT'), false);
+});
+
+test('restore applies validated data, preserves local collisions, and never overwrites built-in prompt IDs', async () => {
+  const indexedDBImpl = new IDBFactory();
+  const db = await openRuntimeDb({ indexedDBImpl });
+  const runRepository = createRunRepository({ db });
+  const resultRepository = createResultRepository({ db, idFactory: () => 'existing-result' });
+  const draftRepository = createDraftRepository({ db, now: () => 10 });
+  const versionRepository = createVersionRepository({ db, idFactory: () => 'existing-version', now: () => 20 });
+  const builtIn = AI_PROMPT_LIBRARY[0];
+  const storage = memoryStorage({ promptVaultData: JSON.stringify({ prompts: [builtIn], promptPacks: [], settings: { language: 'en' } }) });
+
+  await runRepository.create({ id: 'local-run', promptId: builtIn.id, status: 'success', output: 'local', createdAt: 1 });
+  await draftRepository.upsert({ draftId: 'local-draft', promptId: 'user:local', title: 'Local draft', rawPrompt: 'local' });
+
+  const incoming = createBackup({
+    customPrompts: [
+      { id: String(builtIn.id), builtIn: false, owner: 'user', name: 'Collision with built-in', prompt: 'must not overwrite' },
+      { id: 'user:imported', builtIn: false, owner: 'user', name: 'Imported', prompt: 'imported prompt' },
+    ],
+    drafts: [{ draftId: 'import-draft', promptId: 'user:imported', title: 'Imported draft', rawPrompt: 'draft' }],
+    versions: [{ versionId: 'import-version', promptId: 'user:imported', versionNumber: 1, promptSnapshot: 'version', variableConfigSnapshot: {}, metadataSnapshot: {}, status: 'stable', createdAt: 4 }],
+    runs: [{ id: 'import-run', promptId: 'user:imported', status: 'success', output: 'restored', createdAt: 5 }],
+    results: [{ resultId: 'import-result', sourceRunId: 'import-run', name: 'Restored result', promptSnapshot: 'p', variablesSnapshot: {}, outputSnapshot: 'restored', metadataSnapshot: {}, createdAt: 6 }],
+    packs: [{ id: 'pack:imported', name: 'Imported pack', promptIds: ['user:imported'] }],
+    favorites: ['user:imported'],
+    settings: { language: 'th', theme: 'dark' },
+  }, { now: () => 99 });
+
+  let suffix = 0;
+  const applied = await applyBackupRestore(incoming, { db, storage, idFactory: () => `copy-${++suffix}` });
+  assert.equal(applied.ok, true);
+  assert.equal((await runRepository.get('import-run')).output, 'restored');
+  assert.equal((await draftRepository.get('import-draft')).rawPrompt, 'draft');
+  assert.equal((await versionRepository.get('import-version')).promptSnapshot, 'version');
+  assert.equal((await resultRepository.get('import-result')).outputSnapshot, 'restored');
+
+  const promptData = readPromptBackupData(storage);
+  assert.ok(promptData.customPrompts.some((item) => item.id === 'user:imported'));
+  assert.equal(promptData.customPrompts.some((item) => String(item.id) === String(builtIn.id)), false);
+  assert.ok(promptData.packs.some((item) => item.id === 'pack:imported'));
+  assert.ok(promptData.favorites.includes('user:imported'));
+  assert.equal(promptData.settings.language, 'th');
+  assert.equal(AI_PROMPT_LIBRARY.find((item) => String(item.id) === String(builtIn.id)).prompt, builtIn.prompt);
+  db.close();
+});
+
+test('invalid restore is atomic and leaves runtime/storage data untouched', async () => {
+  const db = await openRuntimeDb({ indexedDBImpl: new IDBFactory() });
+  const runRepository = createRunRepository({ db });
+  await runRepository.create({ id: 'before', promptId: 'p', status: 'success', output: 'safe', createdAt: 1 });
+  const storage = memoryStorage({ promptVaultData: JSON.stringify({ prompts: [], settings: { language: 'th' } }) });
+  const beforeStorage = storage.getItem('promptVaultData');
+  const result = await applyBackupRestore('{not json', { db, storage });
+  assert.equal(result.ok, false);
+  assert.equal((await runRepository.list()).length, 1);
+  assert.equal(storage.getItem('promptVaultData'), beforeStorage);
+  db.close();
 });
