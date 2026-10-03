@@ -5,10 +5,11 @@ import fs from 'node:fs';
 const source = fs.readFileSync(new URL('../components/control/ControlCenter.jsx', import.meta.url), 'utf8');
 
 test('Control Center presents repository-derived metrics and explicit unavailable states', () => {
-  for (const token of ['Runs Today', '7 days', '30 days', 'Saved Results', 'Pending Sync', 'Failure Center', 'Recent Activity', 'Unavailable']) {
+  for (const token of ['Runs Today', '7 days', '30 days', 'Saved Results', 'Custom Prompts', 'Drafts', 'Versions', 'Pending Sync', 'Sync Errors', 'Status Breakdown', 'Failure Center', 'Recent Activity', 'Unavailable']) {
     assert.ok(source.includes(token), `missing ${token}`);
   }
   assert.match(source, /metrics/);
+  assert.match(source, /analytics/);
   assert.match(source, /activity/);
   assert.match(source, /failures/);
 });
