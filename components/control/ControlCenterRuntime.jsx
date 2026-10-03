@@ -28,6 +28,10 @@ function browserStorage() {
   return typeof window === 'undefined' ? null : window.localStorage;
 }
 
+function currentPromptState() {
+  return readPromptBackupData(browserStorage());
+}
+
 export default function ControlCenterRuntime({ activePage = 'control', onNavigate, cloudAdapter = null }) {
   const runtimeRef = useRef(null);
   const restoreInputRef = useRef(null);
@@ -38,7 +42,7 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
     const runtime = runtimeRef.current;
     if (!runtime) return;
     try {
-      const next = await runtime.refresh();
+      const next = await runtime.refresh({ promptState: currentPromptState() });
       setState({ loading: false, error: null, ...next });
     } catch (error) {
       setState((current) => ({ ...current, loading: false, error: error instanceof Error ? error.message : String(error) }));
@@ -56,7 +60,7 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
           return;
         }
         runtimeRef.current = openedRuntime;
-        const next = await openedRuntime.refresh();
+        const next = await openedRuntime.refresh({ promptState: currentPromptState() });
         if (!cancelled) setState({ loading: false, error: null, ...next });
       } catch (error) {
         if (!cancelled) setState({ loading: false, error: error instanceof Error ? error.message : String(error), snapshot: null, storage: null, model: null });
@@ -71,8 +75,7 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
 
   const handleExportBackup = useCallback(() => {
     if (!state.snapshot) return;
-    const promptData = readPromptBackupData(browserStorage());
-    const backup = createBackup({ ...state.snapshot, ...promptData });
+    const backup = createBackup({ ...state.snapshot, ...currentPromptState() });
     downloadJson('prompt-os-backup.json', backup);
   }, [state.snapshot]);
 
@@ -87,8 +90,7 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
         setRestoreStatus(`Backup rejected: ${validation.errors.join('; ')}`);
         return;
       }
-      const promptData = readPromptBackupData(browserStorage());
-      const localState = { ...(state.snapshot || {}), ...promptData };
+      const localState = { ...(state.snapshot || {}), ...currentPromptState() };
       const plan = planRestore(text, localState);
       if (!plan.ok) {
         setRestoreStatus(`Restore plan failed: ${plan.errors.join('; ')}`);
@@ -128,10 +130,17 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
   if (state.error) return <main className="h-full overflow-auto p-6 text-slate-200"><section className="mx-auto max-w-xl rounded-2xl border border-rose-300/20 bg-rose-300/[0.04] p-5"><h1 className="text-lg font-semibold">Control Center unavailable</h1><p className="mt-2 text-sm text-slate-400">{state.error}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 min-h-11 rounded-xl border border-white/10 px-4 text-xs">Retry</button></section></main>;
 
   if (activePage === 'storage') {
+    const snapshot = state.snapshot || {};
     return (
       <>
         <StorageSyncCenter
           storage={state.storage || { available: false, usage: null, quota: null }}
+          counts={{
+            runs: snapshot.runs?.length || 0,
+            results: snapshot.results?.length || 0,
+            drafts: snapshot.drafts?.length || 0,
+            versions: snapshot.versions?.length || 0,
+          }}
           syncSummary={state.model?.sync}
           cloudAdapter={cloudAdapter}
           onRetryFailed={handleRetryFailed}
@@ -146,5 +155,5 @@ export default function ControlCenterRuntime({ activePage = 'control', onNavigat
     );
   }
 
-  return <ControlCenter metrics={state.model?.metrics} activity={state.model?.activity} failures={state.model?.failures} onNavigate={onNavigate} />;
+  return <ControlCenter metrics={state.model?.metrics} analytics={state.model?.analytics} activity={state.model?.activity} failures={state.model?.failures} onNavigate={onNavigate} />;
 }
