@@ -3,15 +3,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { openRuntimeDb, withStore } from '../lib/run/indexeddb.mjs';
 
-test('runtime DB creates only Phase 4 stores and required indexes', async () => {
+test('runtime DB preserves Phase 4 stores and adds approved query indexes', async () => {
   const db = await openRuntimeDb();
   assert.deepEqual([...db.objectStoreNames], ['runs', 'runtimeMeta', 'savedResults', 'syncQueue']);
 
   const runs = db.transaction('runs', 'readonly').objectStore('runs');
-  assert.deepEqual([...runs.indexNames], ['by-created-at', 'by-prompt-id', 'by-status']);
+  assert.deepEqual([...runs.indexNames], ['by-created-at', 'by-model', 'by-prompt-id', 'by-provider', 'by-status']);
 
   const results = db.transaction('savedResults', 'readonly').objectStore('savedResults');
-  assert.deepEqual([...results.indexNames], ['by-created-at', 'by-source-run-id']);
+  assert.deepEqual([...results.indexNames], ['by-created-at', 'by-name', 'by-pinned', 'by-source-run-id']);
 
   const queue = db.transaction('syncQueue', 'readonly').objectStore('syncQueue');
   assert.deepEqual([...queue.indexNames], ['by-created-at', 'by-state']);
