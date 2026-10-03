@@ -14,7 +14,7 @@ function downloadText(filename, text, type = 'text/plain;charset=utf-8') {
   URL.revokeObjectURL(url);
 }
 
-export default function SavedResults({ resultRepository, runRepository, onOpenPrompt }) {
+export default function SavedResults({ resultRepository, onOpenPrompt }) {
   const flags = useV5FeatureFlags();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState([]);
@@ -63,12 +63,12 @@ export default function SavedResults({ resultRepository, runRepository, onOpenPr
   };
 
   const openSourceRun = async (item) => {
-    if (!item?.sourceRunId || !runRepository?.get) {
+    if (!item?.resultId || !resultRepository?.getSourceRun) {
       setError('Source Run is unavailable. The immutable Saved Result remains intact.');
       return;
     }
     try {
-      const run = await runRepository.get(item.sourceRunId);
+      const run = await resultRepository.getSourceRun(item.resultId);
       if (!run) {
         setError('Source Run was deleted or is unavailable. The immutable Saved Result remains intact.');
         return;
