@@ -31,9 +31,10 @@ test('sync repository can list and summarize actual queue records without a clou
   db.close();
 });
 
-test('Storage & Sync UI is truthful: unavailable quota, explicit cleanup, Sync Now disabled without real adapter', () => {
+test('Storage & Sync UI is truthful: measurable counts, unavailable quota, explicit cleanup, Sync Now disabled without real adapter', () => {
   const source = fs.readFileSync(new URL('../components/control/StorageSyncCenter.jsx', import.meta.url), 'utf8');
-  for (const token of ['Storage & Sync', 'Unavailable', 'Sync Now', 'Pending', 'Conflicts', 'Delete selected Runs', 'Delete selected Saved Results']) assert.ok(source.includes(token), `missing ${token}`);
+  for (const token of ['Storage & Sync', 'Runs', 'Saved Results', 'Drafts', 'Versions', 'Unavailable', 'Sync Now', 'Pending', 'Conflicts', 'Delete selected Runs', 'Delete selected Saved Results']) assert.ok(source.includes(token), `missing ${token}`);
+  assert.match(source, /counts/);
   assert.match(source, /!cloudAdapter/);
   assert.match(source, /window\.confirm/);
   assert.match(source, /disabled=\{!onDeleteRuns\}/);
