@@ -17,6 +17,7 @@ const PromptOS = dynamic(() => import('../components/PromptOS.jsx'), { ssr: fals
 const PromptLibraryV5 = dynamic(() => import('../components/prompt/PromptLibraryV5.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">LOADING_LIBRARY_V5...</main> });
 const PromptStudio = dynamic(() => import('../components/studio/PromptStudio.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-violet-300 grid place-items-center font-mono">LOADING_PROMPT_STUDIO...</main> });
 const CompareWorkspace = dynamic(() => import('../components/studio/CompareWorkspace.jsx'), { ssr: false });
+const ControlCenterRuntime = dynamic(() => import('../components/control/ControlCenterRuntime.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">LOADING_CONTROL_CENTER...</main> });
 const MissionControl = dynamic(() => import('../components/home/MissionControl.jsx'), { ssr: false, loading: () => <main className="h-full bg-[#050914] text-cyan-400 grid place-items-center font-mono">LOADING_MISSION_CONTROL...</main> });
 const CommandPaletteV5 = dynamic(() => import('../components/command/CommandPaletteV5.jsx'), { ssr: false });
 
@@ -50,7 +51,8 @@ export default function HomePage() {
   const v5SharedPromptTransitionEnabled = Boolean(V5_FEATURE_FLAGS.V5_SHARED_PROMPT_TRANSITION);
   const v5DailyUseEnabled = Boolean(V5_FEATURE_FLAGS.V5_DAILY_USE_COMPLETE);
   const v5PromptStudioEnabled = Boolean(V5_FEATURE_FLAGS.V5_PROMPT_STUDIO);
-  const navigationItems = useMemo(() => buildReleaseNavItems({ dailyUseEnabled: v5DailyUseEnabled, studioEnabled: v5PromptStudioEnabled }), [v5DailyUseEnabled, v5PromptStudioEnabled]);
+  const v5ControlCenterEnabled = Boolean(V5_FEATURE_FLAGS.V5_CONTROL_CENTER_V2);
+  const navigationItems = useMemo(() => buildReleaseNavItems({ dailyUseEnabled: v5DailyUseEnabled, studioEnabled: v5PromptStudioEnabled, controlCenterEnabled: v5ControlCenterEnabled }), [v5ControlCenterEnabled, v5DailyUseEnabled, v5PromptStudioEnabled]);
 
   const navigate = useCallback((page) => {
     if (page === 'studio') setStudioInitialDraft(null);
@@ -122,6 +124,7 @@ export default function HomePage() {
   const status = null;
   const v5ShellEnabled = Object.values(V5_FEATURE_FLAGS).some(Boolean);
   const runtimePage = activePage === 'library' || (v5DailyUseEnabled && (activePage === 'history' || activePage === 'results'));
+  const controlPage = v5ControlCenterEnabled && (activePage === 'control' || activePage === 'storage');
 
   if (!v5ShellEnabled) return <LanguageRuntime><PromptOS /></LanguageRuntime>;
 
@@ -129,7 +132,9 @@ export default function HomePage() {
     <LanguageRuntime>
       <V5FeatureFlagProvider>
         <AppShell activePage={activePage} onNavigate={navigate} onOpenCommand={v5CommandPaletteEnabled ? openCommandPalette : undefined} status={status} visualSystemEnabled={v5VisualSystemEnabled} navigationItems={navigationItems}>
-          {activePage === 'home' && v5MissionControlEnabled ? (
+          {controlPage ? (
+            <ControlCenterRuntime activePage={activePage} onNavigate={navigate} />
+          ) : activePage === 'home' && v5MissionControlEnabled ? (
             <MissionControl onOpenCommand={openCommandPalette} onOpenPrompt={openLibraryPrompt} onOpenPack={openLibraryView} onOpenCollection={openLibraryView} onNavigate={navigate} cloudStatus={null} usageEnabled={v5UsageAnalyticsEnabled} healthEnabled={v5PromptHealthEnabled} smartCollectionsEnabled={v5SmartCollectionsEnabled} />
           ) : activePage === 'studio' && v5PromptStudioEnabled ? (
             <PromptStudio initialDraft={studioInitialDraft} onClose={() => navigate('library')} />
