@@ -36,5 +36,7 @@ test('Storage & Sync UI is truthful: unavailable quota, explicit cleanup, Sync N
   for (const token of ['Storage & Sync', 'Unavailable', 'Sync Now', 'Pending', 'Conflicts', 'Delete selected Runs', 'Delete selected Saved Results']) assert.ok(source.includes(token), `missing ${token}`);
   assert.match(source, /!cloudAdapter/);
   assert.match(source, /window\.confirm/);
+  assert.match(source, /disabled=\{!onDeleteRuns\}/);
+  assert.match(source, /disabled=\{!onDeleteResults\}/);
   assert.doesNotMatch(source, /auto.?prune|setInterval.*delete|Math\.random/i);
 });
