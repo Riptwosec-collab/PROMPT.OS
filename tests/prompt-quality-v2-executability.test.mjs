@@ -40,6 +40,21 @@ test('all 100 prompts declare every template placeholder and render cleanly with
   }
 });
 
+test('all 100 prompts expose structured example values that validate and render without mutating built-ins', () => {
+  assert.equal(AI_PROMPT_LIBRARY.length, 100);
+  for (const prompt of AI_PROMPT_LIBRARY) {
+    const before = structuredClone(prompt);
+    assert.ok(prompt.exampleValues && typeof prompt.exampleValues === 'object' && !Array.isArray(prompt.exampleValues), `${prompt.name}: missing exampleValues`);
+    const values = structuredClone(prompt.exampleValues);
+    const validation = validatePromptVariables(prompt.variableConfig, values);
+    assert.equal(validation.ok, true, `${prompt.name}: invalid exampleValues ${JSON.stringify(validation.errors)}`);
+    const rendered = renderPromptTemplate(prompt.prompt, prompt.variableConfig, values);
+    assert.deepEqual(rendered.unresolvedRequired, [], `${prompt.name}: example leaves required placeholders unresolved`);
+    assert.doesNotMatch(rendered.text, /{{\s*[a-zA-Z0-9_.-]+\s*}}/, `${prompt.name}: example leaves placeholder unresolved`);
+    assert.deepEqual(prompt, before, `${prompt.name}: example validation mutated built-in prompt`);
+  }
+});
+
 test('every prompt rejects at least one empty required input when it has required user data', () => {
   for (const prompt of AI_PROMPT_LIBRARY) {
     const required = Object.entries(prompt.variableConfig || {}).filter(([name, field]) => field.required && name !== 'language');

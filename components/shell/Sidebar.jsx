@@ -8,6 +8,8 @@ function navGlyph(item) {
   const glyphs = {
     home: '⌂',
     library: '◇',
+    history: '↺',
+    results: '◆',
     workspaces: '▦',
     evaluation: '◎',
     improve: '✦',
@@ -19,7 +21,7 @@ function navGlyph(item) {
   return glyphs[item.id] || '•';
 }
 
-export default function Sidebar({ activePage, onNavigate, collapsed = false, onToggleCollapsed }) {
+export default function Sidebar({ activePage, onNavigate, items = V5_NAV_ITEMS, collapsed = false, onToggleCollapsed }) {
   const reducedMotion = useReducedMotion();
 
   return (
@@ -46,7 +48,7 @@ export default function Sidebar({ activePage, onNavigate, collapsed = false, onT
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {V5_NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = activePage === item.id;
           return (
             <button

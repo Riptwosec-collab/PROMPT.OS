@@ -9,6 +9,7 @@ const EXPECTED_FLAGS = [
   'V5_COST_GUARD', 'V5_PROVIDER_SELECTOR', 'V5_COMMAND_PALETTE',
   'V5_CLOUD_SYNC', 'V5_USAGE_ANALYTICS', 'V5_WORKFLOW', 'V5_VISUAL_SYSTEM',
   'V5_MISSION_CONTROL', 'V5_PREMIUM_CARDS', 'V5_SHARED_PROMPT_TRANSITION',
+  'V5_DAILY_USE_COMPLETE', 'V5_PROMPT_STUDIO', 'V5_CONTROL_CENTER_V2',
 ];
 
 test('V5 flags default to false with the complete legacy and granular flag set', () => {
@@ -35,6 +36,26 @@ test('legacy flags remain supported while granular flags use the same parsing ru
   assert.equal(flags.V5_EVALUATION, false);
   assert.equal(flags.V5_ANALYTICS, true);
   assert.equal(flags.V5_SEARCH, true);
+});
+
+test('daily use complete is default-off and strict-true only', () => {
+  assert.equal(readFeatureFlags({}).V5_DAILY_USE_COMPLETE, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_DAILY_USE_COMPLETE: ' true ' }).V5_DAILY_USE_COMPLETE, true);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_DAILY_USE_COMPLETE: '1' }).V5_DAILY_USE_COMPLETE, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_DAILY_USE_COMPLETE: 'yes' }).V5_DAILY_USE_COMPLETE, false);
+});
+
+test('prompt studio is default-off and strict-true only', () => {
+  assert.equal(readFeatureFlags({}).V5_PROMPT_STUDIO, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_PROMPT_STUDIO: ' true ' }).V5_PROMPT_STUDIO, true);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_PROMPT_STUDIO: '1' }).V5_PROMPT_STUDIO, false);
+});
+
+test('control center v2 is default-off and strict-true only', () => {
+  assert.equal(readFeatureFlags({}).V5_CONTROL_CENTER_V2, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_CONTROL_CENTER_V2: ' true ' }).V5_CONTROL_CENTER_V2, true);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_CONTROL_CENTER_V2: '1' }).V5_CONTROL_CENTER_V2, false);
+  assert.equal(readFeatureFlags({ NEXT_PUBLIC_V5_CONTROL_CENTER_V2: 'yes' }).V5_CONTROL_CENTER_V2, false);
 });
 
 test('prompt explainer is default-off and strict-true only', () => {
